@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2019.3.11)  12 MAR 2019 14:48
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2019.3.11)  12 MAR 2019 15:07
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1177,6 +1177,8 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 ] [14
 
+] [15
+
 ]
 \tf@nav=\write6
 \openout6 = `Presentation1503.nav'.
@@ -1187,11 +1189,11 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 \tf@snm=\write8
 \openout8 = `Presentation1503.snm'.
 
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 81.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 81.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 89.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 89.
  (./Presentation1503.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 81.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 81.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 89.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 89.
 
 
 Package rerunfilecheck Warning: File `Presentation1503.out' has changed.
@@ -1205,14 +1207,14 @@ Package rerunfilecheck Info: Checksums for `Presentation1503.out':
 LaTeX Font Warning: Size substitutions with differences
 (Font)              up to 1.0pt have occurred.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 81.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 89.
  ) 
 Here is how much of TeX's memory you used:
- 16682 strings out of 495063
- 306042 string characters out of 3182201
+ 16720 strings out of 495063
+ 306574 string characters out of 3182201
  380693 words of memory out of 3000000
- 19418 multiletter control sequences out of 15000+200000
- 16683 words of font info for 46 fonts, out of 3000000 for 9000
+ 19447 multiletter control sequences out of 15000+200000
+ 23897 words of font info for 64 fonts, out of 3000000 for 9000
  14 hyphenation exceptions out of 8191
  49i,15n,61p,432b,564s stack positions out of 5000i,500n,10000p,200000b,50000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr
@@ -1220,16 +1222,17 @@ Here is how much of TeX's memory you used:
 /texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb></usr/share/texli
 ve/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/share/texliv
 e/texmf-dist/fonts/type1/public/cm-super/sfsi0800.pfb></usr/share/texlive/texmf
--dist/fonts/type1/public/cm-super/sfsi1095.pfb></usr/share/texlive/texmf-dist/f
-onts/type1/public/cm-super/sfss0500.pfb></usr/share/texlive/texmf-dist/fonts/ty
-pe1/public/cm-super/sfss0600.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
-lic/cm-super/sfss0800.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/cm-
-super/sfss1095.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/cm-super/s
-fss1440.pfb>
-Output written on Presentation1503.pdf (14 pages, 198192 bytes).
+-dist/fonts/type1/public/cm-super/sfsi1000.pfb></usr/share/texlive/texmf-dist/f
+onts/type1/public/cm-super/sfsi1095.pfb></usr/share/texlive/texmf-dist/fonts/ty
+pe1/public/cm-super/sfsi1440.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
+lic/cm-super/sfss0500.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/cm-
+super/sfss0600.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/cm-super/s
+fss0800.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/cm-super/sfss1095
+.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/cm-super/sfss1440.pfb>
+Output written on Presentation1503.pdf (15 pages, 209692 bytes).
 PDF statistics:
- 505 PDF objects out of 1000 (max. 8388607)
- 465 compressed objects within 5 object streams
- 33 named destinations out of 1000 (max. 500000)
+ 543 PDF objects out of 1000 (max. 8388607)
+ 500 compressed objects within 5 object streams
+ 35 named destinations out of 1000 (max. 500000)
  54 words of extra memory for PDF output out of 10000 (max. 10000000)
 

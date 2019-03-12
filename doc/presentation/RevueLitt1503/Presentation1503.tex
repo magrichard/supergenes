@@ -35,8 +35,8 @@
 \frametitle{Données}
 \begin{itemize}
 \item<1-> 450k microarray avec 25\% des probes sur des zones intercalaires.
-\item<1-> On utilise les M-values ( $log(\beta)$)
-\item<2-> Méthode extensible à toutes données génomique ( RRBS, WGBS...).
+\item<1-> On utilise les M-values ( = $log(\beta)$ )
+\item<2-> Méthode extensible à toutes données génomiques : RRBS, WGBS...
 
 \end{itemize}
 \end{frame}
@@ -65,7 +65,15 @@ Après avoir choisi le type d'analyse, les étapes de la procédure seront les s
 \end{enumerate}
 \end{frame}
 
+\begin{frame}
+\frametitle{Construction de $Y_i$ }
+Selon le type d'analyse, nos statistiques de test $Y_i$ sont différentes :
+Pour les analyses entre deux groupes ou analyse de contraste, on a :
 
+$$ Y_i = \hat{t}^2 $$
+
+
+\end{frame}
 
 
 
