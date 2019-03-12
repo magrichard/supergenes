@@ -59,31 +59,84 @@ Après avoir choisi le type d'analyse, les étapes de la procédure seront les s
 \item<2-> On calcule $Y_{i}$ nos statistiques de test.
 \item<3-> On estime la distribution de nos statistiques de test $Y_{i}$ par noyau gaussien ( par zones de taille $\lambda$).
 \item<4-> On modélise, par méthode de Satterthwaite, nos statistiques de test "smoothées".
-\item<5-> On en déduit les pvaleurs
+\item<5-> On calcule les pvaleurs du modèle.
 \item<6-> On fixe un seuil à partir duquel on exclue les variables dont la pvaleur est trop forte
 \item<7-> On construit nos DMRs/ZMRs finales en regroupant les CpG sites qui sont au plus à $\lambda$ nucléotides
 \end{enumerate}
 \end{frame}
 
 \begin{frame}
-\frametitle{Construction de $Y_i$ }
+\frametitle{Construction des $Y_i$}
 Selon le type d'analyse, nos statistiques de test $Y_i$ sont différentes :
 Pour les analyses entre deux groupes ou analyse de contraste, on a :
-
-$$ Y_i = \hat{t}^2 $$
-
-
+$$Y_i = \hat{t}^2$$
+avec $t^2$ la statistique du test de Fisher modéré ( ratio de la M-value sur son écart-type).
+Pour l'analyse de variabilité, on a :
+$$Y_i = \frac{V_i}{V}$$
+avec $V_i$ la variance des M-values de l'échantillon $i$ et $V$ la moyenne de cette variance sur tous les échantillons. ( Asymptotiquement équivalent à $F_{n-1,\infty}$).
 \end{frame}
-
-
-
-
-
-
-
-
-\section{blabla}
 
 \begin{frame}
+
+\frametitle{Kernel smoothing}
+Pour l'estimation par noyau,  chaque noyau est construit sur une longueur de $\lambda$ nucléotides, et le paramètre d'échelle $\sigma$ est déterminé par la relation suivante :
+$$\sigma = \frac{\lambda}{C}$$
+Avec $C$ l'unique hyperparamètre de la méthode ( $C^* $ déterminé par CV). On pose :
+
+\begin{equation}
+\left\lbrace
+\begin{array}{ccc}
+S_{KY}(i) = \sum^n_{j=1}K_{ij}Y_{j} \\
+S_{K}(i)= \sum^n_{j=1}K_{ij} \\
+S_{KK} = \sum^n_{j=1}K_{ij}^2
+\end{array}\right.
+\end{equation}
+
+
+
 \end{frame}
+
+
+\begin{frame}{Sélection des CpG sites}
+
+On pose (Satterwhaite) :
+\begin{equation}
+\left\lbrace
+\begin{array}{ccc}
+a_{i} = \frac{S_{KK}(i)}{ (\mu S_{K}(i)} \\
+b_{i} = \frac{\mu S^2_{K}}{S_{KK}(i)}
+\end{array}\right.
+\end{equation}
+et on teste $\frac{S_{KY}(i)}{a_{i}} \sim \chi^2_{b(i)}$ \\
+Les pvaleurs de ce test sont corrigées par procédure Bonjemini-Hochberg.  On retient les sondes dont la pvaleur est inférieure au seuil choisi ( l'auteur conseille 0.05). \\
+On finit par construire nos DMRs ( ou VMRs) en regroupant les CpG sites qui sont à au plus $\lambda$ nucléotides de distance.
+\end{frame}
+
+
+\subsection{Bilan}
+\begin{frame}
+\frametitle{Pros et Cons}
+
+
+\begin{itemize}
+\color{green}
+\item Peu d'hyperparamètres : permet de s'affranchir des artefacts du jeu de données
+\item 95 \% de recall sur jeu de données simulés.
+\item Les auteurs ont pu retrouvé plusieurs ZMRs qui revenaient à chaque fois selon le type de tissu utilisé.
+\item En comparant à d'autres méthodes utilissant aussi $limma$, les résultats étaient en moyenne meilleure et au moins aussi rapide.
+\item A l'étape de construction des zones ( après sélection des CpG sites, pourquoi ne pas faire du ML non supervisé?)
+\item ?
+
+\color{red}
+\item coût calculatoire élevé ( estimation par noyau).
+\item Taille des DMRs non contrôlable puisqu'adossée au paramètre d'échelle d'estimation par noyau + tailles virtuellement similaires ( max $2\lambda$.
+\item ?
+\end{itemize}
+\end{frame}
+
+
+
+
+
+
 \end{document}
