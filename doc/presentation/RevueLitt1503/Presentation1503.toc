@@ -1,0 +1,6 @@
+\beamer@endinputifotherversion {3.26pt}
+\select@language {french}
+\beamer@sectionintoc {1}{DMRcate}{3}{0}{1}
+\beamer@subsectionintoc {1}{1}{Donn\IeC {\'e}es}{3}{0}{1}
+\beamer@subsectionintoc {1}{2}{M\IeC {\'e}thode}{5}{0}{1}
+\beamer@sectionintoc {2}{blabla}{14}{0}{2}

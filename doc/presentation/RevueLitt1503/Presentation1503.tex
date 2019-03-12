@@ -1,0 +1,81 @@
+\documentclass{beamer}
+\usepackage[frenchb]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usetheme{Goettingen}
+
+\begin{document}
+
+
+\title[identification DMRs] % (optional, only for long titles)
+{Analyse différentielle des régions methylées}
+\subtitle{Revue de littérature}
+\author{Jakobi Milan}
+\institute{TIMC-Imag}
+\date[KPT 2004]{Vendredi 15 mars 2019}
+\titlegraphic{\includegraphics[width=0.5\textwidth,height=2cm]{logo_timc.png}}
+
+
+
+
+
+
+\frame{\titlepage}
+
+\begin{frame}
+\frametitle{Table des matières}
+\tableofcontents
+\end{frame}
+
+
+\section{DMRcate}
+\subsection{Données}
+
+\begin{frame}
+\frametitle{Données}
+\begin{itemize}
+\item<1-> 450k microarray avec 25\% des probes sur des zones intercalaires.
+\item<1-> On utilise les M-values ( $log(\beta)$)
+\item<2-> Méthode extensible à toutes données génomique ( RRBS, WGBS...).
+
+\end{itemize}
+\end{frame}
+
+\subsection{Méthode}
+\begin{frame}
+\frametitle{Présentation de la méthode}
+3 types d'analyse proposées :
+\begin{enumerate}
+\item<2-> Analyse entre deux groupes ( Traitement vs Contrôle)
+\item<2-> Analyse de contraste.
+\item<2-> Analyse de variabilité ( On identifie alors les VMRs).
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{Pseudo-algorithme}
+Après avoir choisi le type d'analyse, les étapes de la procédure seront les suivantes :
+\begin{enumerate}
+\item<2-> On calcule $Y_{i}$ nos statistiques de test.
+\item<3-> On estime la distribution de nos statistiques de test $Y_{i}$ par noyau gaussien ( par zones de taille $\lambda$).
+\item<4-> On modélise, par méthode de Satterthwaite, nos statistiques de test "smoothées".
+\item<5-> On en déduit les pvaleurs
+\item<6-> On fixe un seuil à partir duquel on exclue les variables dont la pvaleur est trop forte
+\item<7-> On construit nos DMRs/ZMRs finales en regroupant les CpG sites qui sont au plus à $\lambda$ nucléotides
+\end{enumerate}
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+\section{blabla}
+
+\begin{frame}
+\end{frame}
+\end{document}
