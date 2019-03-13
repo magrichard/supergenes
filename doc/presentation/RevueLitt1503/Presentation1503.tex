@@ -7,7 +7,7 @@
 \begin{document}
 
 
-\title[identification DMRs] % (optional, only for long titles)
+\title[identification DMRs] 
 {Analyse différentielle des régions methylées}
 \subtitle{Revue de littérature}
 \author{Jakobi Milan}
@@ -28,7 +28,7 @@
 \end{frame}
 
 
-\section{DMRcate}
+\section{DMRcate : Peters et al. 2015}
 \subsection{Données}
 
 \begin{frame}
@@ -123,16 +123,129 @@ On finit par construire nos DMRs ( ou VMRs) en regroupant les CpG sites qui sont
 \item Peu d'hyperparamètres : permet de s'affranchir des artefacts du jeu de données
 \item 95 \% de recall sur jeu de données simulés.
 \item Les auteurs ont pu retrouvé plusieurs ZMRs qui revenaient à chaque fois selon le type de tissu utilisé.
-\item En comparant à d'autres méthodes utilissant aussi $limma$, les résultats étaient en moyenne meilleure et au moins aussi rapide.
-\item A l'étape de construction des zones ( après sélection des CpG sites, pourquoi ne pas faire du ML non supervisé?)
+\item En comparant à d'autres méthodes utilissant aussi $limma$, les résultats étaient en moyenne meilleurs et la méthode au moins aussi rapide.
 \item ?
 
 \color{red}
 \item coût calculatoire élevé ( estimation par noyau).
 \item Taille des DMRs non contrôlable puisqu'adossée au paramètre d'échelle d'estimation par noyau + tailles virtuellement similaires ( max $2\lambda$.
 \item ?
+
+\color{black}
+\item A l'étape de construction des zones ( après sélection des CpG sites, pourquoi ne pas faire du ML non supervisé?)
 \end{itemize}
 \end{frame}
+
+
+
+\section{Interpolation et signature de méthylation : VanderKraats et al. 2013}
+\begin{frame}
+\begin{center}
+\textit{Discovering high-resolution patterns of differential DNA methylation that correlate with gene expression changes}. VanderKraats et al. 2013
+\end{center}
+\end{frame}
+
+
+\subsection{Données}
+\begin{frame}
+\frametitle{Données}
+Données d'expression des gênes et données de methylation mises côte à côte.
+\begin{itemize}
+\item WGBS et Methyl-MAPS sur données cancéreuses et saines sur cellules mammaires principalement. 17 datasets différents dont l'intersection représente 24.9\% des CpG sites du génôme humain.
+\item N'importe quelles données d'expression différentielles ( eg : RNA-Seq, expression array analysis).
+\end{itemize}
+\end{frame}
+
+\subsection{Méthode}
+\begin{frame}
+\frametitle{Présentation de la méthode}
+Cette méthode propose une mise en relation des données de methylation (construction de DMRs) et du niveau d'expression des gênes. \\
+Permet l'identification de patterns de relation entre la méthylation, l'expression du gêne, et la position du TSS.
+\end{frame}
+
+\begin{frame}
+\frametitle{Pseudo-algorithme}
+2 échantillons A et B, on dispose de leur données de methylation et des niveaux d'expression différentielle des gênes correspondants :
+\begin{enumerate}
+\item <1-> Différence de methylation : B-A
+\item <2-> Interpolation autour de chaque TSS : création de signatures
+\item <3-> Calcul de la distance de Fréchet discrète entre chaque paire de signature.
+\item <4-> Clustering hiérarchique ascendant en utilisant la distance comme critère d'aggrégation (Complete linkage).
+\item <5-> Sélection des clusters correlés à l'expression (KS test).
+\item <6-> Aggrégation des clusters jugés similaires dans une liste de gênes ayant un schéma de relation similaire entre expression-methylation-position de la variation par rapport au TSS.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{Methylation Signatures}
+\begin{itemize}
+\item On commence par soustraire pour chaque site le niveau de methylation entre B et A, la valeur obtenue pour chaque site est donc bornée en $[-1,1]$.
+\item On interpole ensuite la courbe de methylation (spline cubique) en prenant pour chaque CpG les 1 à 5 plus proches CpG sites.
+\item Les régions ainsi crées avec moins de 5 CpG sites, les régions ne disposant pas d'au moins un CpG voisin et les régions ne contenant aucune différence de methylation >0.2.
+\item On lisse avec une estimation par noyau gaussien ($\sigma = 50bp$)
+\item <2-> \textbf{On obtient donc de nombreuses signatures qui se chevauchent}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Clustering}
+On aggrège les régions en suivant la procédure suivante :
+\begin{itemize}
+\item On convertit chaque signature en courbe polynomiale ( on moyenne tous les 10bp pour améliorer le temps de calcul) ce qui permet d'approximer efficacement la distance de Fréchet : on obtient notre critère de similarité/dissimilarité.
+\item On peut suite effectuer notre classification hiérarchique ascendante.
+\item On introduit ensuite l'expression des gènes : on test pour chaque cluster $m$ l'expression des gènes face à toutes les autres données. On test par Kolmogorov-Smirnov et on contrôle l'inflation du risque $\alpha$ par procédure BH.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Clustering (suite) : création de la liste de gènes retenus}
+On cherche suite à dégager une liste de gènes de nos cluster. Les auteurs ont construit un critère de pureté défini comme la fraction des gênes qui ont une différence d'expression de même polarité. On peut ajouter à la liste des gènes remarquables les clusters suivant ce critère ( le seuil proposé est 0.85 de pureté), avec comme contraintes :
+\begin{itemize}
+\item<1-> Si le cluster $c'$ considéré ne chevauche aucun autre cluster déjà présent dans la liste, il est ajouté.
+\item<2-> Si $c'$ est descendant d'un autre cluster qui est déjà sur la liste, il n'est pas ajouté
+\item<3-> Si $c'$  est le parent d'un ou plusieurs clusters déjà présents sur la liste, on compare leur pureté : Si les descendants ont une pureté représentant moins de 30 \% de la pureté de $c'$, on ajoute $c'$ a notre liste de gène et on retire les descendants, sinon on n'ajoute pas $c'$ et on garde les descendants.
+\end{itemize}
+\end{frame}
+
+\subsection{Bilan}
+\begin{frame}
+\frametitle{Avantages, inconvénients, perspectives...}
+\begin{itemize}
+
+\color{green}
+\item Forte capacité à distinguer des patterns de relation methylation/niveau d'expression \textbf{en prenant en compte la position du TSS}
+\item L'interpolation permet d'inférer efficacement les données manquantes
+\item Algorithme stable et robuste au bruit
+
+\color{red}
+\item Enormément d'heuristiques : sélection des régions d'intérêt, paramètre de lissage, seuil et contraintes dans le critère de pureté construit
+\item Kolmogorov-Smirnov...
+
+\color{black}
+\item La méthode gagnerait à ne pas utiliser Kolmogorov-Smirnov mais un autre critère de significativité ( éventuellement mathématique). On pourrait imaginer d'autres distances pour la classification ( JSD?) et pour la pureté ( negentropie?).
+\end{itemize}
+\end{frame}
+
+\section{Schlosberg et al. 2017}
+
+\begin{frame}
+\begin{center}
+\textit{Modeling complex patterns of differential DNA methylation that associate with gene expression changes}. Schlosberg et al. 2017
+\end{center}
+\end{frame}
+
+
+
+
+
+\subsection{Données}
+
+\subsection{Méthode}
+
+\subsection{Bilan}
+
+
+
 
 
 

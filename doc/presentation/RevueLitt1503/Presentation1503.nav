@@ -3,7 +3,7 @@
 \headcommand {\beamer@framepages {1}{1}}
 \headcommand {\slideentry {0}{0}{2}{2/2}{}{0}}
 \headcommand {\beamer@framepages {2}{2}}
-\headcommand {\sectionentry {1}{DMRcate}{3}{DMRcate}{0}}
+\headcommand {\sectionentry {1}{DMRcate : Peters et al. 2015}{3}{DMRcate : Peters et al. 2015}{0}}
 \headcommand {\beamer@sectionpages {1}{2}}
 \headcommand {\beamer@subsectionpages {1}{2}}
 \headcommand {\beamer@subsectionentry {0}{1}{1}{3}{Donn\IeC {\'e}es}}\headcommand {\beamer@subsectionpages {3}{2}}
@@ -23,8 +23,35 @@
 \headcommand {\beamer@subsectionentry {0}{1}{3}{17}{Bilan}}\headcommand {\beamer@subsectionpages {5}{16}}
 \headcommand {\slideentry {1}{3}{1}{17/17}{Bilan}{0}}
 \headcommand {\beamer@framepages {17}{17}}
-\headcommand {\beamer@partpages {1}{17}}
-\headcommand {\beamer@subsectionpages {17}{17}}
+\headcommand {\sectionentry {2}{Interpolation et signature de m\IeC {\'e}thylation : VanderKraats et al. 2013}{18}{Interpolation et signature de m\IeC {\'e}thylation : VanderKraats et al. 2013}{0}}
 \headcommand {\beamer@sectionpages {3}{17}}
-\headcommand {\beamer@documentpages {17}}
-\headcommand {\def \inserttotalframenumber {9}}
+\headcommand {\beamer@subsectionpages {17}{17}}
+\headcommand {\slideentry {2}{0}{2}{18/18}{}{0}}
+\headcommand {\beamer@framepages {18}{18}}
+\headcommand {\beamer@subsectionentry {0}{2}{1}{19}{Donn\IeC {\'e}es}}\headcommand {\beamer@subsectionpages {18}{18}}
+\headcommand {\slideentry {2}{1}{1}{19/19}{Donn\IeC {\'e}es}{0}}
+\headcommand {\beamer@framepages {19}{19}}
+\headcommand {\beamer@subsectionentry {0}{2}{2}{20}{M\IeC {\'e}thode}}\headcommand {\beamer@subsectionpages {19}{19}}
+\headcommand {\slideentry {2}{2}{1}{20/20}{M\IeC {\'e}thode}{0}}
+\headcommand {\beamer@framepages {20}{20}}
+\headcommand {\slideentry {2}{2}{2}{21/26}{M\IeC {\'e}thode}{0}}
+\headcommand {\beamer@framepages {21}{26}}
+\headcommand {\slideentry {2}{2}{3}{27/28}{M\IeC {\'e}thode}{0}}
+\headcommand {\beamer@framepages {27}{28}}
+\headcommand {\slideentry {2}{2}{4}{29/29}{M\IeC {\'e}thode}{0}}
+\headcommand {\beamer@framepages {29}{29}}
+\headcommand {\slideentry {2}{2}{5}{30/32}{M\IeC {\'e}thode}{0}}
+\headcommand {\beamer@framepages {30}{32}}
+\headcommand {\beamer@subsectionentry {0}{2}{3}{33}{Bilan}}\headcommand {\beamer@subsectionpages {20}{32}}
+\headcommand {\slideentry {2}{3}{1}{33/33}{Bilan}{0}}
+\headcommand {\beamer@framepages {33}{33}}
+\headcommand {\sectionentry {3}{Schlosberg et al. 2017}{34}{Schlosberg et al. 2017}{0}}
+\headcommand {\beamer@sectionpages {18}{33}}
+\headcommand {\beamer@subsectionpages {33}{33}}
+\headcommand {\slideentry {3}{0}{2}{34/34}{}{0}}
+\headcommand {\beamer@framepages {34}{34}}
+\headcommand {\beamer@partpages {1}{34}}
+\headcommand {\beamer@subsectionpages {35}{34}}
+\headcommand {\beamer@sectionpages {34}{34}}
+\headcommand {\beamer@documentpages {34}}
+\headcommand {\def \inserttotalframenumber {18}}
