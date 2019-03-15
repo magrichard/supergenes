@@ -1,0 +1,16 @@
+---
+title: "Prise en main des données - Statistiques descriptives"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+cnv = readRDS("data/tcga_studies/study_TCGA-LUSC_cnv.rds")
+meth = readRDS("data/tcga_studies/study_TCGA-LUSC_meth.rds")
+trscr = readRDS("data/tcga_studies/study_TCGA-LUSC_trscr.rds")
+```
+
