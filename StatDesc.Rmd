@@ -14,3 +14,16 @@ meth = readRDS("data/tcga_studies/study_TCGA-LUSC_meth.rds")
 trscr = readRDS("data/tcga_studies/study_TCGA-LUSC_trscr.rds")
 ```
 
+```{r}
+dim(cnv$data)
+dim(meth$data)
+```
+
+On dispose des données d'expression de gênes de 617 patients et des données de methylation de 572 patients. Notre analyse portant sur leur mise en relation, on ne garde que les individus pour lesquels on dispose des deux ensembles de données.
+
+```{r}
+length(intersect(colnames(cnv$data),colnames(meth$data)))
+data_cnv = cnv$data[,intersect(colnames(cnv$data),colnames(meth$data))]
+data_meth = meth$data[,intersect(colnames(cnv$data),colnames(meth$data))]
+```
+Après filtrage, nous disposons des données pour 570 individus.
