@@ -33,12 +33,13 @@ Après filtrage, nous disposons des données pour 570 individus.
 
 ## Analyse disjointe : Expression des gènes
 
-
+### Analyse par chromosome
 
 ```{r}
 attach(c(pf_cnv,data_cnv))
 Chromosome = as.factor(pf_cnv$chrom_text)
 ggplot(pf_cnv, aes(x=pf_cnv$cpg_density, y = ..density.., fill= Chromosome)) + geom_histogram(position = "dodge")+stat_bin(bins=45,binwidth = 0.0005) + xlab("CpG Density") + xlim(0,0.075)
+ggplot(pf_cnv, aes(x=pf_cnv$cpg_density, fill=Chromosome)) + geom_density(alpha=.3)
 ```
 
 Le niveau d'expression des gènes est très nettement lié au chromosome sur lequel la mesure est prise. On ne note cependant aucune distinction claire quant à la distribution de ces mêmes niveaux.
