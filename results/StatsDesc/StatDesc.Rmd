@@ -9,10 +9,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-cnv = readRDS("data/tcga_studies/study_TCGA-LUSC_cnv.rds")
-meth = readRDS("data/tcga_studies/study_TCGA-LUSC_meth.rds")
-trscr = readRDS("data/tcga_studies/study_TCGA-LUSC_trscr.rds")
-library(ggplot2)
+cnv <- readr::read_rds('../../data/tcga_studies/study_TCGA-LUSC_cnv.rds')
+meth = readRDS("../../data/tcga_studies/study_TCGA-LUSC_meth.rds")
+trscr = readRDS("../../data/tcga_studies/study_TCGA-LUSC_trscr.rds")
+source("fun_desc.R")
 ```
 
 ```{r}
@@ -23,11 +23,10 @@ dim(meth$data)
 On dispose des données d'expression de 26084 gènes de 617 patients et des données de methylation de 572 patients provenant de 485577 sondes. Notre analyse portant sur leur mise en relation, on ne garde que les individus pour lesquels on dispose des deux ensembles de données.
 
 ```{r}
-length(intersect(colnames(cnv$data),colnames(meth$data)))
-data_cnv = data.frame(cnv$data[,intersect(colnames(cnv$data),colnames(meth$data))])
+data_cnv = data.frame(cnv$data[,intersect(colnames(cnv$data),colnames(meth$data))])[-which(cnv$exp_grp$sex=="F"),]
 data_meth = data.frame(meth$data[,intersect(colnames(cnv$data),colnames(meth$data))])
 pf_meth = meth$platform
-pf_cnv = cnv$platform
+pf_cnv = cnv$platform[-which(cnv$exp_grp$sex=="F"),]
 ```
 
 Après filtrage, nous disposons des données pour 570 individus.
@@ -38,24 +37,16 @@ Après filtrage, nous disposons des données pour 570 individus.
 
 ```{r}
 attach(c(pf_cnv,data_cnv))
-Chromosome = as.factor(pf_cnv$chrom_text)
-ggplot(pf_cnv, aes(x=pf_cnv$cpg_density, y = ..density.., fill= Chromosome)) + geom_histogram(position = "dodge")+stat_bin(bins=45,binwidth = 0.0005) + xlab("CpG Density") + xlim(0,0.075)
-ggplot(pf_cnv, aes(x=pf_cnv$cpg_density, fill=Chromosome)) + geom_density(alpha=.3)
-
+chromosome = as.factor(pf_cnv$chrom_text)
+Plot_Categ_Continu(pf_cnv,categ =chromosome,continuous = pf_cnv$cpg_density)
 ```
 
 Le niveau d'expression des gènes est très nettement lié au chromosome sur lequel la mesure est prise. On ne note cependant aucune distinction claire quant à la distribution de ces mêmes niveaux.
 
 ```{r}
-ggplot(pf_cnv, aes(x=mean_expr, y = ..density.., fill= Chromosome)) + geom_histogram(position = "dodge")+stat_bin(bins=50,binwidth = 0.005) + xlab("Mean Gene Expression")+ xlim(min(mean_expr),max(mean_expr))+ylim(0,150)
-ggplot(pf_cnv, aes(x=mean_expr, fill=Chromosome)) + geom_density(alpha=.3)
+mean_expr = apply(data_cnv,1,mean)
+Plot_Categ_Continu(pf_cnv,categ =chromosome,continuous= mean_expr)
 ```
-
-
-
-
-
-
 
 
 
