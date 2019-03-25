@@ -1,0 +1,66 @@
+---
+title: "Toto"
+author: "Titi"
+date: "21 mars 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+if (!exists("trscr_lusc")) {
+trscr_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_trscr.rds")
+}
+if (!exists("meth_lusc")) {
+meth_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_meth.rds")
+}
+
+if(!exists("penda_superup_deregulated")) {
+  penda_superup_deregulated = readxl::
+  
+  
+  
+}
+```
+
+
+
+```{r}
+up_str = 2500
+dwn_str = 2500  
+nb_probe_min = 1
+
+if (!exists("feat_indexed_probes")) {
+  print("Indexing probe by features")
+  # params
+  ## index meth probes by chr
+  pf_chr_colname = "seqnames"
+  pf_pos_colname = "start"
+  chrs = unique(features[,1])
+  chrs_indexed_epic = lapply(chrs, function(chr) {
+    print(chr)
+    idx = rownames(epic)[epic[[pf_chr_colname]] %in% chr]  
+    ret = epic[idx,]
+    return(ret)
+  })
+  names(chrs_indexed_epic) = chrs
+  # barplot(sapply(chrs_indexed_epic, dim)[1,], leg=names(chrs_indexed_epic), las=2)
+  ## index probes by gene name
+  feat_indexed_probes = epimedtools::monitored_apply(features, 1, function(gene) {
+    # gene = features[1,]
+    # print(gene)
+    chr = gene[[1]]
+    meth_platform = chrs_indexed_epic[[chr]]
+    ret = dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str) 
+    return(ret)
+  })
+}
+
+# Filtering gene by #probes
+features$nb_epic_probes = sapply(feat_indexed_probes[rownames(features)], length)
+sub_features =  features[features$nb_epic_probes >= nb_probe_min,]
+dim(sub_features)
+```
+

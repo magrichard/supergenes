@@ -35,7 +35,7 @@ if (!exists("study_dmeth_tcga_luad")) {
 
 if (!exists("study_dmeth_tcga_lusc")) {
   print("Loading study_dmeth_tcga_lusc...")
-  s_lusc = epimedtools::create_study("~/projects/supergenes/data/tcga_studies/tudy_TCGA-LUSC_meth.rds")
+  s_lusc = epimedtools::create_study("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_meth.rds")
   idx_nt = rownames(s_lusc$exp_grp)[s_lusc$exp_grp$tissue_status %in% "normal"]
   idx_tum = rownames(s_lusc$exp_grp)[s_lusc$exp_grp$tissue_status %in% "tumoral"]
   mean_nt = epimedtools::monitored_apply(mod=5000, s_lusc$data[,idx_nt], 1, mean, na.rm=TRUE)
@@ -81,7 +81,7 @@ if (!exists("study_meth_nt_tcga")) {
 
 if (!exists("epic")) {
   print("Loading Epic metadata .")
-  epic_orig = readRDS("~/projects/supergenes/data/all_human_tissues/EPIC.hg38.manifest.gencode.v22.rds")
+  epic_orig = readRDS("~/projects/supergenes/data/EPIC.hg38.manifest.gencode.v22.rds")
   # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
   epic_orig
   epic = as.data.frame(epic_orig)
@@ -301,7 +301,7 @@ if (!exists("features")) {
     # post processing
     features[,4:5] = features[,5:4]
     colnames(features)[4:5] = colnames(features)[5:4]
-    features = features[!duplicated(features[,4],),]
+    features = features[!duplicated(features[,4]),]
     rownames(features) = features[,4]
     features = features[order(features[,1], features[,2]),]
     saveRDS(features, "features_ts.rds")
@@ -697,7 +697,7 @@ print(dim(meth_by_sample_by_feature))
 ```
 
 ```{r , fig.width=9, fig.height=9}
-plot_meth_hm(meth_by_sample_by_feature, , rsc=rsc)
+plot_meth_hm(meth_by_sample_by_feature,  rsc=rsc)
 ```
 
 
@@ -723,7 +723,7 @@ plot_meth_hm(meth_by_sample_by_feature, , rsc=rsc)
 
 # Heatmap of TSS PTM profiles of clusters
 
-```{r echo=FALSE, results="verbatim"}
+```{r echo=FALSE, results="verbatim", eval=FALSE}
 ts_features  = features[rownames(meth_by_tissues_by_feature),]
 genes = readRDS("~/projects/supergenes/data/bed_grch38_epimeddb.rds")
 set.seed(1)
@@ -735,7 +735,7 @@ cns = paste0("rndorts_", prefix)
 features_1[[cns]] = "TS"
 features_2[[cns]] = "RND"
 feat = rbind(features_1, features_2)
-source(knitr::purl("~/projects/all_human_tissues/results/meth/00_deeptools_call.Rmd"))
+source(knitr::purl("~/projects/supergenes/data/00_deeptools_call.Rmd"))
 ```
 
 
