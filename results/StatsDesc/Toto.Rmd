@@ -9,25 +9,118 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+
+# Import des données.
+
+
+```{r echo=FALSE, results ="hide"}
+source("~/projects/supergenes/funMilan.R")
+print("Loading databases...")
+
+if (!exists("epic")) {
+  print("Loading Epic metadata .")
+  epic_orig = readRDS("~/projects/supergenes/data/EPIC.hg38.manifest.gencode.v22.rds")
+  # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
+  epic = as.data.frame(epic_orig)
+  rownames(epic) = names(epic_orig)
+  head(epic)
+  pf_chr_colname = "seqnames"
+  pf_pos_colname = "start"
+  epic = epic[order(epic[[pf_chr_colname]], epic[[pf_pos_colname]]),]
+}
+
+
+
 if (!exists("trscr_lusc")) {
+  print("Loading LUSC transcription data...")
 trscr_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_trscr.rds")
 }
+
+
 if (!exists("meth_lusc")) {
+  print("Loading LUSC methylation data...")
 meth_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_meth.rds")
 }
 
 if(!exists("penda_superup_deregulated")) {
-  penda_superup_deregulated = readxl::
+  print("Loading superexpressed genes database...")
+  penda_superup_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx"))
+  rownames(penda_superup_deregulated) <- penda_superup_deregulated[,1]; penda_superup_deregulated <- penda_superup_deregulated[,-1]
+  
+  for (i in 1:dim(penda_superup_deregulated)[1]){
+    if (is.element(i,c(1:3,178:dim(penda_superup_deregulated)[1])))
+      {penda_superup_deregulated[i,1] <- 1}
+    else {penda_superup_deregulated[i,1] <- 0}
+    
+    if (i <= 177)
+      {penda_superup_deregulated[i,2] <- 1}
+    else {penda_superup_deregulated[i,2] <- 0}
+    
+  }
+}
+
+if(!exists("penda_superdown_deregulated")){
+  print("Loading underexpressed genes database...")
+  penda_superdown_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 2))
+  rownames(penda_superdown_deregulated) <- penda_superdown_deregulated[,1]; penda_superdown_deregulated <- penda_superdown_deregulated[,-1]
+  
+  for (i in 1:dim(penda_superdown_deregulated)[1]){
+    if (is.element(i,c(1:123,385:dim(penda_superdown_deregulated)[1]))) 
+    {penda_superdown_deregulated[i,1] <- 1}
+    else {penda_superdown_deregulated[i,1]<- 0}
+    
+    if(i <= 384)
+    {penda_superdown_deregulated[i,2] <- 1}
+    else {penda_superdown_deregulated[i,2]<- 0}
+    
+  } 
+}
   
   
+if(!exists("penda_super_conserved")){
+  print("Loading conserved genes database...")
+  penda_superconserved = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 3))
+  rownames(penda_superconserved) <- penda_superconserved[,1]; penda_superconserved <- penda_superconserved[,-1]
+    
+    for (i in 1:dim(penda_superconserved)[1]){
+      if (is.element(i,c(1:33,80:dim(penda_superconserved)[1])))
+      {penda_superconserved[i,1] <- 1}
+      else {penda_superconserved[i,1] <- 0}
+      
+      if(i <= 79)
+      {penda_superconserved[i,2] <- 1}
+      else {penda_superconserved[i,2] <- 0}
+    }
   
 }
+
+
 ```
+
+- The 
+
+
+
+
+
+
+
+# Data preprocessing
 
 
 
 ```{r}
+features = get_features(penda_superconserved,index_pathology = 2,trscr_lusc)
+```
+
+
+- `r dim(features)[1]` Genes were selected given the parameters. We can now index probes by genes for the ones we selected.
+
+
+
+
+
+```{r echo=TRUE, results ='hide'}
 up_str = 2500
 dwn_str = 2500  
 nb_probe_min = 1
@@ -46,7 +139,7 @@ if (!exists("feat_indexed_probes")) {
     return(ret)
   })
   names(chrs_indexed_epic) = chrs
-  # barplot(sapply(chrs_indexed_epic, dim)[1,], leg=names(chrs_indexed_epic), las=2)
+
   ## index probes by gene name
   feat_indexed_probes = epimedtools::monitored_apply(features, 1, function(gene) {
     # gene = features[1,]
@@ -61,6 +154,19 @@ if (!exists("feat_indexed_probes")) {
 # Filtering gene by #probes
 features$nb_epic_probes = sapply(feat_indexed_probes[rownames(features)], length)
 sub_features =  features[features$nb_epic_probes >= nb_probe_min,]
-dim(sub_features)
+summary(sub_features$nb_epic_probes)
 ```
+
+
+- `r length(unique(unlist(feat_indexed_probes[rownames(sub_features)])))` CpGs 
+- corresponding to `r length(rownames(sub_features))` genes given that we excluded genes with less than `r nb_probe_min` in our window of `r paste(up_str,";",dwn_str)` around the transcription starting site (TSS).
+
+```{r}
+
+
+```
+
+
+
+
 
