@@ -94,7 +94,6 @@ if(!exists("penda_super_conserved")){
   
 }
 
-
 ```
 
 - The 
@@ -115,14 +114,16 @@ features = get_features(penda_superconserved,index_pathology = 2,trscr_lusc, up_
 
 
 - `r dim(features)[1]` Genes were selected given the parameters. We can now index probes by genes for the ones we selected.
-
-
-
-
 - `r length(unique(unlist(feat_indexed_probes[rownames(sub_features)])))` CpGs 
 - corresponding to `r length(rownames(sub_features))` genes given that we excluded genes with less than `r nb_probe_min` in our window of `r paste(up_str,";",dwn_str)` around the transcription starting site (TSS).
 
+```{r}
+plot_selected_gene("TG",expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = probes_index)
+```
 
 
 
+```{r}
+plot_selected_probes(selected_gene)
+```
 
