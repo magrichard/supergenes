@@ -1,6 +1,6 @@
 ##################### Plot probes position along a selected gene given a features object #############
 
-plot_selected_probes = function(selected_gene = "ENPP4", expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = feat_indexed_probes, nbins = 5){
+plot_selected_probes = function(selected_gene = "ENPP4", expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = feat_indexed_probes, nbins = 5, ...){
   
   expr_data = expr_data[,intersect(colnames(expr_data),colnames(meth_data))] #### On ne garde en données que les individus pour lesquels on a méthylation ET 
   
@@ -32,7 +32,7 @@ plot_selected_probes = function(selected_gene = "ENPP4", expr_data = trscr_lusc$
 
 
 
-plot_selected_gene  = function(selected_gene = selected_gene, expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = feat_indexed_probes_bin){
+plot_selected_gene  = function(selected_gene = selected_gene, expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = feat_indexed_probes_bin, ...){
   
   
   expr_data = expr_data[,intersect(colnames(expr_data),colnames(meth_data))] #### On ne garde en données que les individus pour lesquels on a méthylation ET 

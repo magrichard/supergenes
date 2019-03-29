@@ -14,8 +14,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r echo=FALSE, results ="hide"}
-source("~/projects/supergenes/fun_preprocess.R")
-source("~/projects/supergenes/fun_plots.R")
+source("~/projects/supergenes/fun/fun_preprocess.R")
+source("~/projects/supergenes/fun/fun_plots.R")
 print("Loading databases...")
 
 if (!exists("epic")) {
@@ -111,6 +111,7 @@ if(!exists("penda_super_conserved")){
 
 ```{r}
 features = get_features(penda_superdown_deregulated,index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
+get_features_bins(penda_superdown_deregulated,index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
 ```
 
 

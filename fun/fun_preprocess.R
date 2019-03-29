@@ -1,7 +1,7 @@
 ###################################  Getting probes features for targeted type of genes ( superdown, superup...) and type of lung cancer #######################
 
 
-get_features <- function(targeted_genes, index_pathology = 2, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1){   #### In my uses-case, 1 for LUAD & 2 for LUSC 
+get_features <- function(targeted_genes, index_pathology = 2, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...){   #### In my uses-case, 1 for LUAD & 2 for LUSC 
   print("Creating a list of features...")
   targeted_genes = targeted_genes[targeted_genes[,index_pathology]==1,]
   features = study$platform[intersect(rownames(study$platform),rownames(targeted_genes)),]
@@ -56,9 +56,9 @@ get_features <- function(targeted_genes, index_pathology = 2, study, up_str = 25
 }
 
 
-####get_features
+############################### get_features_bins : same as prior + indexing probes per bins #####################
 
-get_features_bins <- function(targeted_genes, index_pathology = 2, study = trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1){   #### In my uses-case, 1 for LUAD & 2 for LUSC 
+get_features_bins <- function(targeted_genes, index_pathology = 2, study = trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...){   #### In my uses-case, 1 for LUAD & 2 for LUSC 
   print("Creating a list of features...")
   targeted_genes = targeted_genes[targeted_genes[,index_pathology]==1,]
   features = study$platform[intersect(rownames(study$platform),rownames(targeted_genes)),]
@@ -228,7 +228,7 @@ catalog =  function(selected_features = features) {
 
 ###########################  Creation of bins ######################
 
-do_bins = function(selected_gene = gene, nbins = 5){
+do_bins = function(selected_gene = gene, nbins = 5, ...){
   
   window = c(features$features[selected_gene,"TSS"]-dwn_str,features$features[selected_gene,"TSS"]+up_str)
   window_width = window[2]-window[1]
