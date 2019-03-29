@@ -150,7 +150,7 @@ reduce_rows = function(tmp_meth_data, map,  indicator_func2=mean, ...) {
     # print(f)
     # f = features[1,]
     # f = features["HACD4",]
-    probe_idx = intersect(rownames(tmp_meth_data), map[[f]])
+    probe_idx = intersect(rownames(tmp_meth_data), rownames(map[[f]]$sub_epic))
     if (length(probe_idx) == 0) {    
       # print(f)
       tmp_meth_by_tissues_by_feature = rep(NA,ncol(tmp_meth_data))
@@ -162,7 +162,7 @@ reduce_rows = function(tmp_meth_data, map,  indicator_func2=mean, ...) {
     }
     return(tmp_meth_by_tissues_by_feature)
   })
-  colnames(meth_by_tissues_by_feature) = names(map)
+  names(meth_by_tissues_by_feature) = names(map)
   meth_by_tissues_by_feature = t(meth_by_tissues_by_feature)
   return(meth_by_tissues_by_feature)
 }

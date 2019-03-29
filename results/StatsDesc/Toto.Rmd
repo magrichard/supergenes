@@ -14,7 +14,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r echo=FALSE, results ="hide"}
-source("~/projects/supergenes/funMilan.R")
+source("~/projects/supergenes/fun_preprocess.R")
+source("~/projects/supergenes/fun_plots.R")
 print("Loading databases...")
 
 if (!exists("epic")) {
@@ -109,7 +110,7 @@ if(!exists("penda_super_conserved")){
 
 
 ```{r}
-features = get_features(penda_superconserved,index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
+features = get_features(penda_superdown_deregulated,index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
 ```
 
 
@@ -117,13 +118,19 @@ features = get_features(penda_superconserved,index_pathology = 2,trscr_lusc, up_
 - `r length(unique(unlist(feat_indexed_probes[rownames(sub_features)])))` CpGs 
 - corresponding to `r length(rownames(sub_features))` genes given that we excluded genes with less than `r nb_probe_min` in our window of `r paste(up_str,";",dwn_str)` around the transcription starting site (TSS).
 
+
 ```{r}
-plot_selected_gene("TG",expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = probes_index)
+catalog(features)
+```
+
+
+```{r}
+plot_selected_gene("GRK5",expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = features$probes)
 ```
 
 
 
 ```{r}
-plot_selected_probes(selected_gene)
+plot_selected_probes("GRK5",nbins = 6)
 ```
 
