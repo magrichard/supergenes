@@ -33,9 +33,8 @@ get_bin_values2 <- function(data = meth_lusc$data, indexes = feat_indexed_probes
   values_per_genes_per_bins <- list()
   
   ret = sapply(binlist, function(bin) {
-
     
-    values_per_genes_per_bins[[bin]] <- lapply(rownames(features), function(gene) {
+      values_per_genes_per_bins[[bin]] <- lapply(rownames(features), function(gene) {
       tmp_probes <- indexes[[gene]][[bin]]
       tmp_data <- data[intersect(tmp_probes, rownames(data)),]
       
@@ -49,4 +48,7 @@ get_bin_values2 <- function(data = meth_lusc$data, indexes = feat_indexed_probes
   
   return(ret)
 }
+
+
+
 
