@@ -1,10 +1,9 @@
 ###################################  Getting probes features for targeted type of genes ( superdown, superup...) and type of lung cancer #######################
 
 
-get_features <- function(targeted_genes, index_pathology = 2, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
+get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
   print("Creating a list of features...")
-  targeted_genes <- targeted_genes[targeted_genes[, index_pathology] == 1, ]
-  features <- study$platform[intersect(rownames(study$platform), rownames(targeted_genes)), ]
+  features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
 
   TSS <- c()
   for (i in 1:dim(features)[1]) {
@@ -31,7 +30,7 @@ get_features <- function(targeted_genes, index_pathology = 2, study, up_str = 25
   names(chrs_indexed_epic) <- chrs
 
   ## index probes by gene name
-  feat_indexed_probes <- epimedtools::monitored_apply(features, 1, function(gene) {
+  feat_indexed_probes <<- epimedtools::monitored_apply(features, 1, function(gene) {
     # gene = features[1,]
     # print(gene)
     chr <- gene[[1]]
@@ -62,15 +61,14 @@ get_features <- function(targeted_genes, index_pathology = 2, study, up_str = 25
 
 ############################### get_features_bins : same as prior + indexing probes per bins #####################
 
-get_features_bins <- function(targeted_genes, index_pathology = 2, study = trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
+get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
   print("Creating a list of features...")
-  targeted_genes <- targeted_genes[targeted_genes[, index_pathology] == 1, ]
-  features <- study$platform[intersect(rownames(study$platform), rownames(targeted_genes)), ]
+  features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
 
 
 
 
-  print("Indexing probe by features")
+  print("Indexing probe by features and by bins...")
   # params
   ## index meth probes by chr
   pf_chr_colname <- "seqnames"
@@ -87,7 +85,7 @@ get_features_bins <- function(targeted_genes, index_pathology = 2, study = trscr
 
 
   ## index probes by gene name
-  feat_indexed_probes_bin <<- epimedtools::monitored_apply(features, 1, function(gene) {
+  feat_indexed_probes_bin <- epimedtools::monitored_apply(features, 1, function(gene) {
     # gene = features[1,]
     # print(gene)
     chr <- gene[[1]]
@@ -163,23 +161,29 @@ get_features_bins <- function(targeted_genes, index_pathology = 2, study = trscr
     tmp_u_bin <- 0
     tmp_d_bin <- 1500
     bin6 <- dmprocr::get_probe_names(tmp_gene, sub_epic, pf_chr_colname, pf_pos_colname, tmp_u_bin, tmp_d_bin)
+    
+    
     ret <- list(sub_epic = sub_epic, bin1 = bin1, bin2 = bin2, bin3 = bin3, bin4 = bin4, bin5 = bin5, bin6 = bin6)
     return(ret)
+    
+    
   })
 
 
-  features$nb_epic_probes <- sapply(feat_indexed_probes_bin[rownames(features)], length)
-  sub_features <- features[features$nb_epic_probes >= nb_probe_min, ]
-
-  print(paste(nrow(features) - nrow(sub_features), "genes were removed due to the followings selection parameters :",
-    "window downstream the TSS :", dwn_str,
-    "window upstream the TSS : ", up_str,
-    "Min number of probes :", nb_probe_min,
-    sep = " "
-  ))
 
 
-  return(sub_features)
+  return(feat_indexed_probes_bin)
+}
+
+############catalog##################
+
+catalog <- function(selected_features = features) {
+  available_genes <- list(catalog = "catalog", n_genes = "n_genes")
+  
+  available_genes[["catalog"]] <- noquote(rownames(selected_features))
+  available_genes [["n_genes"]] <- noquote(paste("Genes selected :", length(available_genes[[1]]), sep = " "))
+  warning("Note that quotes were removed for clarity, please select your genes using it for the plotting function.")
+  return(available_genes)
 }
 
 
@@ -212,62 +216,62 @@ reduce_rows <- function(tmp_meth_data, map, indicator_func2 = mean, ...) {
 
 
 
+############### get a one level map for genes per bin with a form such as 
 
 
-
-# Genes selected catalog function ( no calculus only visualisation)
-
-
-catalog <- function(selected_features = features) {
-  available_genes <- list(catalog = "catalog", n_genes = "n_genes")
-
-  available_genes[["catalog"]] <- noquote(rownames(selected_features))
-  available_genes [["n_genes"]] <- noquote(paste("Genes selected :", length(available_genes[[1]]), sep = " "))
-  warning("Note that quotes were removed for clarity, please select your genes using it for the plotting function.")
-  return(available_genes)
-}
-
-
-
-###########################  Creation of bins ######################
-
-do_bins <- function(selected_gene = gene, nbins = 5, ...) {
-  window <- c(features$features[selected_gene, "TSS"] - dwn_str, features$features[selected_gene, "TSS"] + up_str)
-  window_width <- window[2] - window[1]
-  bw <- window_width / nbins
-
-
-  tmp <- meth_lusc$platform[selected_probes, ]
-  bins <- cut(tmp$Start, nbins)
-  levels(bins) <- seq(1, nbins, 1)
-
-  bins_coordinates <- matrix(ncol = 2, nrow = nbins)
-  for (i in 2:(window_width / bw)) {
-    bins_coordinates[1, ] <- c(window[1], window[1] + bw)
-    bins_coordinates[i, 1] <- bins_coordinates[i - 1, 2]
-    bins_coordinates[i, 2] <- bins_coordinates[i, 1] + bw
-  }
-  colnames(bins_coordinates) <- c("Start", "End")
-  rownames(bins_coordinates) <- levels(bins)
-
-  desc <- cbind(bins, rowMeans(methvals_of_interest, na.rm = TRUE), apply(methvals_of_interest, 1, var, na.rm = TRUE), apply(methvals_of_interest, 1, sd, na.rm = TRUE))
-  desc <- rbind(tapply(desc[, 2], desc[, 1], mean), tapply(desc[, 3], desc[, 1], mean), tapply(desc[, 4], desc[, 1], mean))
-  rownames(desc) <- c("mean", "Var", "sd")
-
-  res <- list("bins" = bins, "table" = table(bins), "bins_coordinates" = bins_coordinates, "stats" = desc)
-  return(res)
-}
-
-create_map <- function(indexes = feat_indexed_probes_bin, binlist = c("bin1", "bin2", "bin3", "bin4", "bin5", "bin6"), genes = features) {
-  map <- c()
-
-  ret <- sapply(binlist, function(bin) {
-      lapply(rownames(features), function(gene) {
-      map[[paste(gene, "_", bin, sep = "")]] <- feat_indexed_probes_bin[[gene]][[bin]]
-      tmp_names <<- paste(gene, "_", bin, sep = "")
-      return(map)
-    })
-
+get_binmap <- function(feat_indexed_probes_bin = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))  {
+  bin_indexed_probes = lapply(feat_indexed_probes_bin, function(g){
+    g[binlist]
   })
-  return(ret)
+  bin_indexed_probes = unlist(bin_indexed_probes, recursive = FALSE)
 }
+
+####################### get means per bins per genes #############################
+
+#means_per_bins_per_genes_per_patient = reduce_rows(meth_lusc$data,binmap,mean,na.rm=T)
+
+subset_vals_per_bins <- function(values_per_patient = means_per_bins_per_genes_per_patient, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"), fun = mean, ...){
+  values_per_bins <- apply(values_per_patient,1,fun, na.rm=T) ### get mean per lines (gene_bin)
+  ret <- list()
+  
+  vals <- sapply(binlist, function(bin){
+    ret[[bin]] <- values_per_bins[endsWith(names(values_per_bins),bin)]    
+    return(ret)
+    
+    }
+  )
+  
+  
+  tmp = reduce_rows(meth_lusc$data, feat_indexed_probes, mean, na.rm=T)
+  overall = apply(tmp,1,fun,na.rm=T)
+  
+  
+  vals_per_genes <- do.call(cbind,vals)
+  vals_per_genes <- cbind(vals_per_genes,overall)
+  colnames(vals_per_genes) <-c(binlist,"overall")
+  rownames(vals_per_genes) <- names(feat_indexed_probes_bin)
+  
+  return(vals_per_genes)
+  
+}
+
+# means
+# means = means[order(means[,7]),]
+# means= means[,-"overall"]
+# data = means
+# dendrogram = "none"      
+# Rowv = NULL
+# Colv = NULL
+# # col
+# colors=c("green", "black", "red")
+# cols = colorRampPalette(colors)(20)
+# 
+# foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, main=paste0("Mean of mean (", nrow(data), " genes x ", ncol(data), " tissues)"), mar=c(10,5), useRaster=TRUE)
+
+
+
+
+
+
+
+
