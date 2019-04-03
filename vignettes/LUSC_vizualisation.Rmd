@@ -13,14 +13,14 @@ output:
 ```{r eval=TRUE, echo=FALSE, label="loading databases"}
 knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
 
-source("~/projects/supergenes/fun/fun_preprocess.R")
+source("~/projects/supergenes/src/fun_preprocess.R")
 
 
 print("Loading databases...")
 
 if (!exists("epic")) {
   print("Loading Epic metadata .")
-  epic_orig = readRDS("~/projects/supergenes/data/EPIC.hg38.manifest.gencode.v22.rds")
+  epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.gencode.v22.rds")
   # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
   epic = as.data.frame(epic_orig)
   rownames(epic) = names(epic_orig)
@@ -34,13 +34,13 @@ if (!exists("epic")) {
 
 if (!exists("trscr_lusc")) {
   print("Loading LUSC transcription data...")
-trscr_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_trscr.rds")
+trscr_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_trscr.rds")
 }
 
 
 if (!exists("meth_lusc")) {
   print("Loading LUSC methylation data...")
-meth_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_meth.rds")
+meth_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_meth.rds")
 }
 
 if(!exists("penda_superup_deregulated")) {
@@ -119,7 +119,7 @@ We are here interested on indexing probes. the following function assign probes 
 The following example uses superdown deregulated genes as features.
 
 ```{r}
-get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
+get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { 
   print("Creating a list of features...")
   features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
 
@@ -134,8 +134,7 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
   }
 
   print("Indexing probe by features")
-  # params
-  ## index meth probes by chr
+
   pf_chr_colname <- "seqnames"
   pf_pos_colname <- "start"
   chrs <- unique(features[, 1])
@@ -147,17 +146,14 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
   })
   names(chrs_indexed_epic) <- chrs
 
-  ## index probes by gene name
+
   feat_indexed_probes <<- epimedtools::monitored_apply(features, 1, function(gene) {
-    # gene = features[1,]
-    # print(gene)
+
     chr <- gene[[1]]
     meth_platform <- chrs_indexed_epic[[chr]]
     tmp_probes <- dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str)
     sub_epic <- meth_platform[tmp_probes, c(pf_chr_colname, pf_pos_colname)]
-    # here compute bin 1 to 6 using sub_epic
-    # do_biens
-    # ret = list(sub_epic=sub_epic, bin1=..., bin2=..., bin3=..., bin4=..., bin5=..., bin6=...)
+
     return(tmp_probes)
   })
 
@@ -197,8 +193,7 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
 
 
   print("Indexing probes by features and by bins")
-  # params
-  ## index meth probes by chr
+
   pf_chr_colname <- "seqnames"
   pf_pos_colname <- "start"
   chrs <- unique(features[, 1])
@@ -212,16 +207,14 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
 
 
 
-  ## index probes by gene name
+
   feat_indexed_probes_bin <- epimedtools::monitored_apply(features, 1, function(gene) {
-    # gene = features[1,]
-    # print(gene)
+
     chr <- gene[[1]]
     meth_platform <- chrs_indexed_epic[[chr]]
     tmp_probes <- dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str)
     sub_epic <- meth_platform[tmp_probes, c(pf_chr_colname, pf_pos_colname)]
-    # here compute bin 1 to 6 using sub_epic
-    # do_bins()
+
     tmp_gene <- gene
     tmp_gene[[6]] <- "+"
     if (gene[[6]] == "+") {
@@ -325,7 +318,7 @@ get_binmap <- function(feat_indexed_probes_bin = feat_indexed_probes_bin, binlis
 binmap = get_binmap(feat_indexed_probes_bin = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))
 ```
 
-Our binmap is now a list of one level depth, of length bins times features (`length(binmap)`)
+Our binmap is now a list of one level depth, of length bins times features (`r length(binmap)`)
 
 # Step 3 : Map-reducing
 
@@ -357,7 +350,7 @@ reduce_rows <- function(tmp_meth_data, map, indicator_func2 = mean, ...) {
 means_per_bins_per_genes_per_patient = reduce_rows(meth_lusc$data,binmap,mean,na.rm=T)
 ```
 
-We transformed reduce a database of `r nrow(meth_lusc$data)` probes for `r ncol(meth_lusc$data)`  patients into a database of `r nrow(means_per_bins_per_genes_per_patient)` rows.
+We transformed reduce a database of `r nrow(meth_lusc$data)` probes for `r ncol(meth_lusc$data)`  patients into a database of `r nrow(means_per_bins_per_genes_per_patient)`  rows corresponding to each bin per feature and an equel number of columns.
 
 # Step 4 : Subsetting map-reduced database.
 
@@ -376,7 +369,7 @@ subset_vals_per_bins <- function(values_per_patient = means_per_bins_per_genes_p
   )
   
   
-  tmp = reduce_rows(meth_lusc$data, feat_indexed_probes, mean, na.rm=T) ### note that you need feat_indexed_probes loaded into your environnment
+  tmp = reduce_rows(meth_lusc$data, feat_indexed_probes, mean, na.rm=T) ### note that you need feat_indexed_probes loaded into your environnment, it should be if you follow the pipeline.
   overall = apply(tmp,1,fun,na.rm=T)
   
   
@@ -399,7 +392,7 @@ We finally obtain a table ( `r nrow(means)`*`r ncol(means)`)of the means values 
 ```{r echo=TRUE}
 meth_heatmap <- function(data = means, dendrogram = "none", Rowv = NULL, Colv = NULL, ...){
   
-  data = data[order(means[,7]),]
+  data = data[order(data[,7]),]
   data = data[,-7]
   
 
@@ -407,7 +400,7 @@ meth_heatmap <- function(data = means, dendrogram = "none", Rowv = NULL, Colv = 
   colors=c("green", "black", "red")
   cols = colorRampPalette(colors)(20)
 
-  foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, main=paste0("Mean of values (", nrow(data), " genes x ", ncol(data), "bins"), mar=c(10,5), useRaster=TRUE)
+  foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, main=paste0("Mean of values (", nrow(data), " genes x ", ncol(data)," ", "bins)"), mar=c(10,5), useRaster=TRUE)
 
 return(foo)
 }

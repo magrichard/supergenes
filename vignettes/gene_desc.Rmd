@@ -12,13 +12,13 @@ output:
 
 
 ```{r setup, include=FALSE}
-source("~/projects/supergenes/fun/fun_preprocess.R")
-source("~/projects/supergenes/fun/fun_plots.R")
+source("~/projects/supergenes/src/fun_preprocess.R")
+source("~/projects/supergenes/src/fun_plots.R")
 print("Loading databases...")
 
 if (!exists("epic")) {
   print("Loading Epic metadata .")
-  epic_orig = readRDS("~/projects/supergenes/data/EPIC.hg38.manifest.gencode.v22.rds")
+  epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.gencode.v22.rds")
   # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
   epic = as.data.frame(epic_orig)
   rownames(epic) = names(epic_orig)
@@ -32,13 +32,13 @@ if (!exists("epic")) {
 
 if (!exists("trscr_lusc")) {
   print("Loading LUSC transcription data...")
-trscr_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_trscr.rds")
+trscr_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_trscr.rds")
 }
 
 
 if (!exists("meth_lusc")) {
   print("Loading LUSC methylation data...")
-meth_lusc = readRDS("~/projects/supergenes/data/tcga_studies/study_TCGA-LUSC_meth.rds")
+meth_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_meth.rds")
 }
 
 if(!exists("penda_superup_deregulated")) {
@@ -97,6 +97,8 @@ if(!exists("penda_superconserved")){
   penda_superconserved <- rownames(penda_superconserved[penda_superconserved[,2] == 1, ])
   
 }
+
+dim(meth_lusc$data)
 features = get_features(penda_superdown_deregulated, trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
 feat_indexed_probes_bin = get_features_bins(penda_superdown_deregulated,index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
 ```
