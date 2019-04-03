@@ -7,12 +7,37 @@ output: html_document
 
 ```{r}
 library(readr)
+
+if (!exists("tcga_lusc_DMR")) {
+  print("Loading LUSC DMR metadata...")
 tcga_lusc_DMR <- read_delim("~/projects/supergenes/data/dataAnais/TCGA-LUSC_cancer_DMRs.tsv", ",", escape_double = FALSE, trim_ws = TRUE)
+}
+
+if (!exists("pf")){
 pf <- as.data.frame(read.table("~/projects/supergenes/data/dataAnais/hg38_genomic_features.bed"))
 colnames(pf) <- c("chromosome","start","end","genomic_feature","gene")
-
 hypo_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hypo"),]
 hyper_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hyper"),]
+}
+
+if (!exists("trscr_lusc")) {
+  print("Loading LUSC transcription data...")
+trscr_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_trscr.rds")
+}
+
+
+if (!exists("epic")) {
+  print("Loading Epic metadata .")
+  epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.gencode.v22.rds")
+  # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
+  epic = as.data.frame(epic_orig)
+  rownames(epic) = names(epic_orig)
+  head(epic)
+  pf_chr_colname = "seqnames"
+  pf_pos_colname = "start"
+  epic = epic[order(epic[[pf_chr_colname]], epic[[pf_pos_colname]]),]
+}
+
 
 #chr, start, end, width : hg38 position and width of DMR
 #DMR_id : unique ID for that DMR, per cancer
