@@ -1,0 +1,420 @@
+---
+title: "BedData Vizualisation"
+author: "Jakobi Milan"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r eval=TRUE, echo=FALSE, label="loading databases"}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
+
+source("~/projects/supergenes/src/fun_preprocess.R")
+
+
+print("Loading databases...")
+
+if (!exists("epic")) {
+  print("Loading Epic metadata .")
+  epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.gencode.v22.rds")
+  # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
+  epic = as.data.frame(epic_orig)
+  rownames(epic) = names(epic_orig)
+  head(epic)
+  pf_chr_colname = "seqnames"
+  pf_pos_colname = "start"
+  epic = epic[order(epic[[pf_chr_colname]], epic[[pf_pos_colname]]),]
+}
+
+
+
+if (!exists("trscr_lusc")) {
+  print("Loading LUSC transcription data...")
+trscr_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_trscr.rds")
+}
+
+
+if (!exists("meth_lusc")) {
+  print("Loading LUSC methylation data...")
+meth_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_meth.rds")
+}
+
+if(!exists("penda_superup_deregulated")) {
+  print("Loading superexpressed genes list...")
+  penda_superup_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx"))
+  rownames(penda_superup_deregulated) <- penda_superup_deregulated[,1]; penda_superup_deregulated <- penda_superup_deregulated[,-1]
+  
+  for (i in 1:dim(penda_superup_deregulated)[1]){
+    if (is.element(i,c(1:3,178:dim(penda_superup_deregulated)[1])))
+      {penda_superup_deregulated[i,1] <- 1}
+    else {penda_superup_deregulated[i,1] <- 0}
+    
+    if (i <= 177)
+      {penda_superup_deregulated[i,2] <- 1}
+    else {penda_superup_deregulated[i,2] <- 0}
+    
+  }
+  penda_superup_deregulated <- rownames(penda_superup_deregulated[penda_superup_deregulated[,2] == 1, ])
+  
+}
+
+if(!exists("penda_superdown_deregulated")){
+  print("Loading underexpressed genes list...")
+  penda_superdown_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 2))
+  rownames(penda_superdown_deregulated) <- penda_superdown_deregulated[,1]; penda_superdown_deregulated <- penda_superdown_deregulated[,-1]
+  
+  for (i in 1:dim(penda_superdown_deregulated)[1]){
+    if (is.element(i,c(1:123,385:dim(penda_superdown_deregulated)[1]))) 
+    {penda_superdown_deregulated[i,1] <- 1}
+    else {penda_superdown_deregulated[i,1]<- 0}
+    
+    if(i <= 384)
+    {penda_superdown_deregulated[i,2] <- 1}
+    else {penda_superdown_deregulated[i,2]<- 0}
+    
+  }
+  
+  penda_superdown_deregulated <- rownames(penda_superdown_deregulated[penda_superdown_deregulated[,2] == 1, ])
+}
+  
+  
+if(!exists("penda_superconserved")){
+  print("Loading conserved genes list...")
+  penda_superconserved = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 3))
+  rownames(penda_superconserved) <- penda_superconserved[,1]; penda_superconserved <- penda_superconserved[,-1]
+    
+    for (i in 1:dim(penda_superconserved)[1]){
+      if (is.element(i,c(1:33,80:dim(penda_superconserved)[1])))
+      {penda_superconserved[i,1] <- 1}
+      else {penda_superconserved[i,1] <- 0}
+      
+      if(i <= 79)
+      {penda_superconserved[i,2] <- 1}
+      else {penda_superconserved[i,2] <- 0}
+    }
+  penda_superconserved <- rownames(penda_superconserved[penda_superconserved[,2] == 1, ])
+  
+}
+
+dim(meth_lusc$data)
+```
+
+Our purpose is to analyze profile of features for LUSC cancer database.
+
+We extracted 3 lists of features differentially methylated by using the Penda package, respectively superconserved, superdown and superup features.
+
+Our database of methylation values used here has been obtained from The Cancer Genome Atlas (TCGA) and is based on BeadChip Illumina 450k output. It contains `r nrow(meth_lusc$data)` probes for `r ncol(meth_lusc$data)` patients.
+
+Also, is used as reference the EPIMED epic database giving probes coordinates.
+
+
+# Step 1 : get features indexed by probes
+
+We are here interested on indexing probes. the following function assign probes per features using the EPIMED database as reference under the following constraints : atleast 1 probe must be around the region of interest wich is defined as [-2500,2500] around the Transcription Starting Site (TSS).
+
+The following example uses superdown deregulated genes as features.
+
+```{r}
+get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { 
+  print("Creating a list of features...")
+  features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
+
+  TSS <- c()
+  for (i in 1:dim(features)[1]) {
+    if (features$strand[i] == "-") {
+      TSS[i] <- features$tx_end[i]
+    }
+    else {
+      TSS[i] <- features$tx_start[i]
+    }
+  }
+
+  print("Indexing probe by features")
+
+  pf_chr_colname <- "seqnames"
+  pf_pos_colname <- "start"
+  chrs <- unique(features[, 1])
+  chrs_indexed_epic <- lapply(chrs, function(chr) {
+    print(chr)
+    idx <- rownames(epic)[epic[[pf_chr_colname]] %in% chr]
+    ret <- epic[idx, ]
+    return(ret)
+  })
+  names(chrs_indexed_epic) <- chrs
+
+
+  feat_indexed_probes <<- epimedtools::monitored_apply(features, 1, function(gene) {
+
+    chr <- gene[[1]]
+    meth_platform <- chrs_indexed_epic[[chr]]
+    tmp_probes <- dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str)
+    sub_epic <- meth_platform[tmp_probes, c(pf_chr_colname, pf_pos_colname)]
+
+    return(tmp_probes)
+  })
+
+
+  features$nb_epic_probes <- sapply(feat_indexed_probes[rownames(features)], length)
+  features <- cbind(features, TSS)
+  sub_features <- features[features$nb_epic_probes >= nb_probe_min, ]
+
+  warning(paste("\n", nrow(features) - nrow(sub_features), "genes were removed due to the followings selection parameters :", "\n",
+    "window downstream the TSS :", dwn_str, "\n",
+    "window upstream the TSS : ", up_str, "\n",
+    "Min number of probes :", nb_probe_min,
+    sep = " "
+  ))
+
+  return(sub_features)
+}
+
+
+features = get_features(penda_superdown_deregulated, trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
+```
+
+We get a list of 377 features, (starting from 381), since 4 were removed due to lack of probes under our predefined constraints. To get a proper vizualisation of our methylation profiles, we are going to split our probes into bins defined as follows :
+
+- bin 1 : from -2500bp to -1000bp compared to the TSS.
+- bin 2 : from -1000bp to -500bp compared to the TSS
+- bin 3 : from -500bp to the TSS
+
+the 3 others bins are defined symmetrically ([TSS,500],[500,1000],[1000,2500]). The following function wich is a variant of the previous one map probes according to those bins
+
+```{r}
+get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
+  print("Creating a list of features...")
+  features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
+
+
+
+
+  print("Indexing probes by features and by bins")
+
+  pf_chr_colname <- "seqnames"
+  pf_pos_colname <- "start"
+  chrs <- unique(features[, 1])
+  chrs_indexed_epic <- lapply(chrs, function(chr) {
+    print(chr)
+    idx <- rownames(epic)[epic[[pf_chr_colname]] %in% chr]
+    ret <- epic[idx, ]
+    return(ret)
+  })
+  names(chrs_indexed_epic) <- chrs
+
+
+
+
+  feat_indexed_probes_bin <- epimedtools::monitored_apply(features, 1, function(gene) {
+
+    chr <- gene[[1]]
+    meth_platform <- chrs_indexed_epic[[chr]]
+    tmp_probes <- dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str)
+    sub_epic <- meth_platform[tmp_probes, c(pf_chr_colname, pf_pos_colname)]
+
+    tmp_gene <- gene
+    tmp_gene[[6]] <- "+"
+    if (gene[[6]] == "+") {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[2]]) - 2500
+    } else {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[3]]) + 1000
+    }
+    tmp_u_bin <- 0
+    tmp_d_bin <- 1500
+    bin1 <- dmprocr::get_probe_names(tmp_gene, sub_epic, pf_chr_colname, pf_pos_colname, tmp_u_bin, tmp_d_bin)
+
+
+
+    tmp_gene <- gene
+    tmp_gene[[6]] <- "+"
+    if (gene[[6]] == "+") {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[2]]) - 1000
+    } else {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[3]]) + 500
+    }
+    tmp_u_bin <- 0
+    tmp_d_bin <- 500
+    bin2 <- dmprocr::get_probe_names(tmp_gene, sub_epic, pf_chr_colname, pf_pos_colname, tmp_u_bin, tmp_d_bin)
+
+    tmp_gene <- gene
+    tmp_gene[[6]] <- "+"
+    if (gene[[6]] == "+") {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[2]]) - 500
+    } else {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[3]]) + 0
+    }
+    tmp_u_bin <- 0
+    tmp_d_bin <- 500
+    bin3 <- dmprocr::get_probe_names(tmp_gene, sub_epic, pf_chr_colname, pf_pos_colname, tmp_u_bin, tmp_d_bin)
+
+    tmp_gene <- gene
+    tmp_gene[[6]] <- "+"
+    if (gene[[6]] == "+") {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[2]]) + 0
+    } else {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[3]]) - 500
+    }
+    tmp_u_bin <- 0
+    tmp_d_bin <- 500
+    bin4 <- dmprocr::get_probe_names(tmp_gene, sub_epic, pf_chr_colname, pf_pos_colname, tmp_u_bin, tmp_d_bin)
+
+    tmp_gene <- gene
+    tmp_gene[[6]] <- "+"
+    if (gene[[6]] == "+") {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[2]]) + 500
+    } else {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[3]]) - 1000
+    }
+    tmp_u_bin <- 0
+    tmp_d_bin <- 500
+    bin5 <- dmprocr::get_probe_names(tmp_gene, sub_epic, pf_chr_colname, pf_pos_colname, tmp_u_bin, tmp_d_bin)
+
+    tmp_gene <- gene
+    tmp_gene[[6]] <- "+"
+    if (gene[[6]] == "+") {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[2]]) + 1000
+    } else {
+      tmp_gene[[2]] <- as.numeric(tmp_gene[[3]]) - 2500
+    }
+    tmp_u_bin <- 0
+    tmp_d_bin <- 1500
+    bin6 <- dmprocr::get_probe_names(tmp_gene, sub_epic, pf_chr_colname, pf_pos_colname, tmp_u_bin, tmp_d_bin)
+    
+    whole_feature <- tmp_probes <- dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str)
+    
+    
+    ret <- list(sub_epic = sub_epic, whole_feature = whole_feature, bin1 = bin1, bin2 = bin2, bin3 = bin3, bin4 = bin4, bin5 = bin5, bin6 = bin6)
+    return(ret)
+    
+    
+  })
+
+
+
+  return(feat_indexed_probes_bin)
+}
+
+feat_indexed_probes_bin = get_features_bins(penda_superdown_deregulated,index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
+```
+
+We have now a map of features with the following architecture : `feat_indexed_probes_bin$gene$bin1`
+
+
+
+
+# Step 2 : Getting a one level depth map 
+
+We now do want to get a one level depth map to map-reduce our data (detailled below).
+
+```{r}
+get_binmap <- function(feat_indexed_probes_bin = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))  {
+  bin_indexed_probes = lapply(feat_indexed_probes_bin, function(g){
+    g[binlist]
+  })
+  bin_indexed_probes = unlist(bin_indexed_probes, recursive = FALSE)
+}
+
+binmap = get_binmap(feat_indexed_probes_bin = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))
+```
+
+Our binmap is now a list of one level depth, of length bins times features (`r length(binmap)`)
+
+# Step 3 : Map-reducing
+
+We now do want to aggregate our data per gene by a given function (eg : mean). To do so we use the following reduce_rows function :
+
+```{r}
+
+reduce_rows <- function(tmp_meth_data, map, indicator_func2 = mean, ...) {
+  dim(tmp_meth_data)
+  meth_by_tissues_by_feature <- epimedtools::monitored_apply(mod = 10, t(t(names(map))), 1, function(f) {
+
+    probe_idx <- intersect(rownames(tmp_meth_data), map[[f]])
+    if (length(probe_idx) == 0) {
+
+      tmp_meth_by_tissues_by_feature <- rep(NA, ncol(tmp_meth_data))
+      names(tmp_meth_by_tissues_by_feature) <- colnames(tmp_meth_data)
+    } else if (length(probe_idx) > 1) {
+      tmp_meth_by_tissues_by_feature <- apply(tmp_meth_data[probe_idx, ], 2, indicator_func2, ...)
+    } else {
+      tmp_meth_by_tissues_by_feature <- sapply(tmp_meth_data[probe_idx, ], indicator_func2, ...)
+    }
+    return(tmp_meth_by_tissues_by_feature)
+  })
+  colnames(meth_by_tissues_by_feature) <- names(map)
+  meth_by_tissues_by_feature <- t(meth_by_tissues_by_feature)
+  return(meth_by_tissues_by_feature)
+}
+
+means_per_bins_per_genes_per_patient = reduce_rows(meth_lusc$data,binmap,mean,na.rm=T)
+```
+
+We transformed reduce a database of `r nrow(meth_lusc$data)` probes for `r ncol(meth_lusc$data)`  patients into a database of `r nrow(means_per_bins_per_genes_per_patient)`  rows corresponding to each bin per feature and an equel number of columns.
+
+# Step 4 : Subsetting map-reduced database.
+
+To get a proper vizualisation, our proposal is to map-reduce a second time, aggregating values per bins, with the following function.
+
+```{r}
+subset_vals_per_bins <- function(values_per_patient = means_per_bins_per_genes_per_patient, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"), fun = mean, ...){
+  values_per_bins <- apply(values_per_patient,1,fun, na.rm=T) 
+  ret <- list()
+  
+  vals <- sapply(binlist, function(bin){
+    ret[[bin]] <- values_per_bins[endsWith(names(values_per_bins),bin)]    
+    return(ret)
+    
+    }
+  )
+  
+  
+  tmp = reduce_rows(meth_lusc$data, feat_indexed_probes, mean, na.rm=T) ### note that you need feat_indexed_probes loaded into your environnment, it should be if you follow the pipeline.
+  overall = apply(tmp,1,fun,na.rm=T)
+  
+  
+  vals_per_genes <- do.call(cbind,vals)
+  vals_per_genes <- cbind(vals_per_genes,overall)
+  colnames(vals_per_genes) <-c(binlist,"overall")
+  rownames(vals_per_genes) <- names(feat_indexed_probes_bin) 
+  
+  return(vals_per_genes)
+  
+}
+
+means = subset_vals_per_bins(values_per_patient = means_per_bins_per_genes_per_patient)
+```
+
+We finally obtain a table ( `r nrow(means)`*`r ncol(means)`)of the means values used ( here, mean) with features as rows and bins as columns with an additionnal column "overall", calculated over the data without bins.
+
+# Step 5 : Vizualising using heatmap
+
+```{r echo=TRUE}
+meth_heatmap <- function(data = means, dendrogram = "none", Rowv = NULL, Colv = NULL, ...){
+  
+  data = data[order(data[,7]),]
+  data = data[,-7]
+  
+
+
+  colors=c("green", "black", "red")
+  cols = colorRampPalette(colors)(20)
+
+  foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, main=paste0("Mean of values (", nrow(data), " genes x ", ncol(data)," ", "bins)"), mar=c(10,5), useRaster=TRUE)
+
+return(foo)
+}
+
+meth_heatmap(means)
+```
+
+# Repeating steps 3,4,5 using variance
+
+```{r}
+vars_per_bins_per_genes_per_patient = reduce_rows(meth_lusc$data,binmap,var,na.rm=T)
+vars = subset_vals_per_bins(values_per_patient = vars_per_bins_per_genes_per_patient)
+meth_heatmap(vars)
+```
+
