@@ -173,7 +173,7 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
 }
 
 
-features = get_features(penda_superdown_deregulated, trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
+subfeatures = get_features(penda_superdown_deregulated, trscr_lusc, up_str = 5000, dwn_str = 5000, nb_probe_min = 1)
 ```
 
 We get a list of 377 features, (starting from 381), since 4 were removed due to lack of probes under our predefined constraints. To get a proper vizualisation of our methylation profiles, we are going to split our probes into bins defined as follows :

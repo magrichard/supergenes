@@ -40,11 +40,11 @@ plot_selected_probes <- function(selected_gene = "ALDH3B1",binlist=c("bin1","bin
 plot_selected_gene  = function(selected_gene = selected_gene, expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = feat_indexed_probes, ...){
   
   
-  expr_data = expr_data[,intersect(colnames(expr_data),colnames(meth_data))] #### On ne garde en données que les individus pour lesquels on a méthylation ET 
-  selected_expr_values = sort(expr_data[selected_gene,]) ##### On sélectionne les données d'expression du gène sélectionné
-  selected_probes = feat_indexed_probes[[selected_gene]] #### On sélectionne les probes se trouvants sur le gène sélectionné
+  expr_data = expr_data[,intersect(colnames(expr_data),colnames(meth_data))]  
+  selected_expr_values = sort(expr_data[selected_gene,]) 
+  selected_probes = feat_indexed_probes[[selected_gene]] 
   methvals_of_interest = meth_data[intersect(selected_probes,rownames(meth_data)),order(match(colnames(meth_data),names(selected_expr_values)))]
-  ## ci-dessus on prend les données de méthylations émises par nos sondes d'intérêts, dans une df triée selon le niveau d'expression du gène sélectionné par patient.
+  
   
   
   
@@ -63,6 +63,8 @@ plot_selected_gene  = function(selected_gene = selected_gene, expr_data = trscr_
   mtext(paste(noquote(selected_gene),"Analysis",sep= " "), outer=TRUE,  cex=2, line=-2)
   
 }
+
+
 
 
 
