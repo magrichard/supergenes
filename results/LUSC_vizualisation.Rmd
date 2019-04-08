@@ -297,7 +297,7 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
   return(feat_indexed_probes_bin)
 }
 
-feat_indexed_probes_bin = get_features_bins(penda_superdown_deregulated,index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
+feat_indexed_probes_bin = get_features_bins(penda_superdown_deregulated, index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
 ```
 
 We have now a map of features with the following architecture : `feat_indexed_probes_bin$gene$bin1`

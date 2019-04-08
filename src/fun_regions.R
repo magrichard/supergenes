@@ -82,7 +82,7 @@ regions_name <-unique(as.character(platform[,"genomic_feature"]))
   return(ret)
   
   })
-  names(feat_indexed_probes_regions) <- rownames(subfeatures)
+  names(feat_indexed_probes_regions) <- rownames(features_list)
   return(feat_indexed_probes_regions)
 
 }

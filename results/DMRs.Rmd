@@ -62,62 +62,247 @@ hyper_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hyper"),]
 #no.atac.peaks : how many ATAC-seq peaks were found to overlap with the DMR
 #selected : hyper: beta_normal<0.5&(atac_peaks==0), hypo:beta_normal>=0.5&(atac_peaks>0)
 
-targeted_genes <- as.character(unique(platform[,5]))
-features <- get_features(targeted_genes, study = trscr_lusc)
-table(platform[,4])
-tmpgene = gene
-tmp = features[tmpgene,c("tx_start","tx_end","strand")]
-tmp2 = platform[which(platform[,5]==tmpgene),]
-tmp2 <-tmp2[order(tmp2[,2]),]
-tmp
-sub_epic
-tmp2
+targeted_genes <- penda_superup_deregulated
+features <- get_features(targeted_genes, study = trscr_lusc,up_str = 10000, dwn_str = 10000)
+get_features_regions(features_list=features)
+DMR_table<-as.data.frame(tcga_lusc_DMR)
 ```
 
 
 ```{r}
 
 
-get_features_regions <- function(targeted_genes, features = features, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
-  print("Creating a list of features...")
-  features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
+get_features_regions <- function(features_list = features, platform_regions = platform, epimed_database = epic, indexed_probes = feat_indexed_probes ){
+
+regions_name <-unique(as.character(platform[,"genomic_feature"]))
+
+  feat_indexed_probes_regions <- lapply(1:nrow(features_list), function(index){
 
 
+    gene <- names(feat_indexed_probes[index])
+    tmp_probes <- feat_indexed_probes[[gene]]
+    epic_tmp <- epic[tmp_probes,c("start","end")]
+    sub_epic <- epic_tmp[intersect(rownames(epic_tmp), rownames(meth_lusc$data)),]
+    pf_gene <- platform[which(platform[,"gene"]==gene),]
+  
 
+    pf_regions = lapply(regions_name, function(region){
+      regions<-pf_gene[which(pf_gene[,"genomic_feature"]==region),]
+      return(regions)
+    })
 
-  print("Indexing probes by features and by bins")
+    names(pf_regions) <- regions_name
 
-  pf_chr_colname <- "seqnames"
-  pf_pos_colname <- "start"
-  chrs <- unique(features[, 1])
-  chrs_indexed_epic <- lapply(chrs, function(chr) {
-    print(chr)
-    idx <- rownames(epic)[epic[[pf_chr_colname]] %in% chr]
-    ret <- epic[idx, ]
-    return(ret)
-  })
-  names(chrs_indexed_epic) <- chrs
-
-
-
-
-  feat_indexed_probes_regions <- epimedtools::monitored_apply(features, 1, function(gene) {
-
-    chr <- gene[[1]]
-    meth_platform <- chrs_indexed_epic[[chr]]
-    whole_feature <- dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str)
-    sub_epic <- meth_platform[tmp_probes, c(pf_chr_colname, pf_pos_colname)]
-    
-    ret <- list(sub_epic = sub_epic, whole_feature = whole_feature, bin1 = bin1, bin2 = bin2, bin3 = bin3, bin4 = bin4, bin5 = bin5, bin6 = bin6)
-    return(ret)
-    
-    
+  per_regions_type_coordinates <-sapply(pf_regions, function(pf){
+    if (nrow(pf)>=1){
+      per_regions_coordinates = apply(pf,1,function(region){
+        range = c(region["start"],region["end"])
+      })
+    }
   })
 
+  names(per_regions_type_coordinates) <- regions_name
+  
+  INTER = vector()
+  P2000 = vector()
+  UTR5 = vector()
+  INTRON = vector()
+  CDS = vector()
+  UTR3 = vector()
 
+  for (i in 1:nrow(sub_epic)){
+    
+      if (!is.null(per_regions_type_coordinates$INTER))
+        if(sum(apply(per_regions_type_coordinates$INTER,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {INTER[i]<-rownames(sub_epic[i,])}
+    
+    
+  
+      if (!is.null(per_regions_type_coordinates$P2000))
+        if(sum(apply(per_regions_type_coordinates$P2000,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {P2000[i]<-rownames(sub_epic[i,])}
+  
+    
 
-  return(feat_indexed_probes_bin)
+      if (!is.null(per_regions_type_coordinates$UTR5))
+        if(sum(apply(per_regions_type_coordinates$UTR5,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {UTR5[i]<-rownames(sub_epic[i,])}
+  
+    
+
+      if (!is.null(per_regions_type_coordinates$INTRON))
+        if(sum(apply(per_regions_type_coordinates$INTRON,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {INTRON[i]<-rownames(sub_epic[i,])}
+    
+    
+      if (!is.null(per_regions_type_coordinates$CDS))
+        if(sum(apply(per_regions_type_coordinates$CDS,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1) 
+      {CDS[i]<-rownames(sub_epic[i,])}
+    
+      if (!is.null(per_regions_type_coordinates$UTR3))
+        if(sum(apply(per_regions_type_coordinates$UTR3,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {UTR3[i]<-rownames(sub_epic[i,])}
+  
+    }
+
+  ret <- list(sub_epic = sub_epic, INTER = INTER, P2000 = P2000, UTR5 = UTR5, CDS = CDS, INTRON = INTRON, UTR3 = UTR3)
+  return(ret)
+  
+  })
+  names(feat_indexed_probes_regions) <- rownames(features_list)
+  return(feat_indexed_probes_regions)
+
 }
+
+feat_indexed_probes_regions = get_features_regions(features_list=features)
+```
+
+
+
+
+```{r}
+
+
+plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = features, pf = platform, EPIMEDepic = epic, probes_index = feat_indexed_probes, window=c(10000,10000)){
+  
+  ## get nearest DMR
+  
+  DMRs_of_interest<-as.data.frame(tcga_lusc_DMR[which(tcga_lusc_DMR[,"closest_gene_name"]==selected_gene),])
+  
+  
+
+  ## get data
+    upstream = window[2]
+    downstream = window[1]
+    pf_gene <- platform[which(platform[,"gene"]==selected_gene),2:4]
+    tmp_probes <- feat_indexed_probes[[selected_gene]]
+    epic_tmp <- epic[tmp_probes,c("start","end")]
+    sub_epic <- epic_tmp[intersect(rownames(epic_tmp), rownames(meth_lusc$data)),]
+    TSS <- features_list[selected_gene,"TSS"]
+    
+    ## get subset of coordinates
+    
+    introns_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTRON"),]
+    exons_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="CDS"),]
+    utr3_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="3UTR"),]
+    utr5_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="5UTR"),]
+    intergenic_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTER"),]
+    p2000_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="P2000"),]
+    
+    ## plot probes + TSS
+    
+    plot(sub_epic$start, rep(3,length(sub_epic$start)), pch=3, xlim=c(TSS-downstream,TSS+upstream), cex=1, yaxt="n",
+         main = paste0(selected_gene,": Probes repartition among regions (nprobes = ",nrow(sub_epic),")"),
+         xlab="Coordinates (in bp)",
+         ylab="",
+         ylim=c(0,5))
+    
+    legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter"),inset=c(-0.12,0), xpd = TRUE, pch=15, col=c("grey","blue","red","green","orange","black"),bty="n")
+    
+    #text(sub_epic$start,rep(4,length(sub_epic$start)), labels = rownames(sub_epic) ,cex = 0.8,srt = 80) ##probes label
+    text(TSS,0.2,labels = paste0("TSS : ", TSS),cex = 0.7)
+    
+    points(TSS, 0.5, pch=9, col="red")
+    abline(h=0.5, lty=3, lwd = 1)
+    
+    ## plot regions
+    
+    
+    
+    if(nrow(p2000_coordinates) > 0) {
+      apply(p2000_coordinates,1, function(p2000){
+        rect(p2000[["start"]],1.5, p2000[["end"]],2.5,
+        col="grey",
+        border ="black")
+      })
+    }
+    
+    
+    
+    if (nrow(exons_coordinates)>0){
+      apply(exons_coordinates,1, function(exon){
+        rect(exon[["start"]],1.5, exon[["end"]], 2.5,
+               col="blue",
+               border="black")
+      })
+    }
+    
+    
+    if(nrow(introns_coordinates)>0){
+      apply(introns_coordinates,1, function(intron){
+        rect(intron[["start"]],1.5, intron[["end"]],2.5,
+               col="red",
+               border="black")
+      })
+    }
+    
+    if(nrow(utr3_coordinates)>0){
+      apply(utr3_coordinates,1, function(utr3){
+        rect(utr3[["start"]],1.5, utr3[["end"]],2.5,
+             col="green",
+             border="black")
+        
+      })
+    }
+    
+    
+    
+    if(nrow(utr5_coordinates)>0){
+      apply(utr5_coordinates,1, function(utr5){
+        rect(utr5[["start"]],1.5, utr5[["end"]],2.5,
+             col="orange",
+             border="black")
+      })
+    }
+    
+    
+    if(nrow(intergenic_coordinates)>0){
+      apply(intergenic_coordinates,1, function(inter){
+        rect(inter[["start"]],1.5, inter[["end"]],2.5,
+             col="black",
+             border="black")
+      })
+    }
+    
+    if(nrow(DMRs_of_interest)>0){
+        coords <- apply(DMRs_of_interest,1,function(dmr){
+            if(dmr[["is.hyper"]]=="hyper"){col="red"}
+           else{col="blue"}
+            rect(dmr[["start"]],1.1,dmr[["end"]],1.3,
+               col=col,
+               border=col)
+               coord <- as.numeric(c(dmr[["start"]],dmr[["end"]]))
+         
+      })
+    }
+    colnames(coords)<-DMRs_of_interest[["DMR_id"]]
+    coords <- apply(coords,2,mean)
+    text(coords,rep(1.2,length(coords)),names(coords),cex = 0.5)
+  
+    
+    ret = list(introns_coordinates = introns_coordinates,
+               exons_coordinates = exons_coordinates,
+               utr3_coordinates = utr3_coordinates,
+               utr5_coordinates = utr5_coordinates,
+               p2000_coordinates = p2000_coordinates,
+               intergenic_coordinates = intergenic_coordinates,
+               probes_coordinates = sub_epic,
+               DMRs_of_interest = DMRs_of_interest)
+    
+    return(ret)
+    
+  
+  
+}
+
+
+plot_selected_regions("OTX1")
 
 ```
 
