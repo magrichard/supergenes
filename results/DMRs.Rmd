@@ -1,13 +1,24 @@
 ---
-title: "ROI"
+title: "BedData Vizualisation - Regions of Interest"
 author: "Jakobi Milan"
-date: "3 avril 2019"
-output: html_document
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
 ---
 
-```{r}
+
+
+
+
+```{r eval=TRUE, echo=FALSE, label="loading databases"}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
 
 source("~/projects/supergenes/src/fun_preprocess.R")
+source("~/projects/supergenes/src/fun_regions.R")
 
 
 if (!exists("tcga_lusc_DMR")) {
@@ -63,14 +74,32 @@ hyper_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hyper"),]
 #selected : hyper: beta_normal<0.5&(atac_peaks==0), hypo:beta_normal>=0.5&(atac_peaks>0)
 
 targeted_genes <- penda_superup_deregulated
-features <- get_features(targeted_genes, study = trscr_lusc,up_str = 10000, dwn_str = 10000)
-get_features_regions(features_list=features)
 DMR_table<-as.data.frame(tcga_lusc_DMR)
+source("~/projects/supergenes/src/fun_plot_regions.R")
 ```
+
+# Foreword
+
+After a first vizualisation using bins ,based on distance to TSS, to divide genes, we now do use regions of interest to partition regions along genes : exons ( noted CDS), introns, UTR'3, UTR'5, intergenes region and a region of 2kbp upstream gene TSS from all transcripts, noted P2000. We also added Differentially Methylated Regions (DMR) on our vizualisation, based on a slightly modified version of DMRcate.
+
+The databatases of DMRs and regions of interest were provided by BSC from Strasbourg. Since they are only interested on protein-coding genes for now, we had to do so to use their data.
+
+# Data presentation
+
+Data table used and presented in the previous vignette are still used. We are going to focus on super upmethylated genes obtained by the Penda method.
+
+We used here a `DMR_table` giving the 11279 DMRs obtained from TCGA data for all cancers, with 28 features : coordinates, wether the region is hypomethylated or hypermethylated, whether an annotated CGI is overlapping with the DMR...
+In addition, is also used a `platform` table giving regions (eg : exons) coordinates indexed by genes, for a total of 19632 features. Thus, we have for 174 of our 177 superup methylated genes, coordinates of different regions along them.
+
+# Data preprocessing
+
+## Indexing probes by regions
+
+We created a function taking as input the list of features of interest, the `platform` giving coordinates for regions, the EPIC database and a prebuilt list of probes indexed by features such as given as output from our `get_features` function. We broadened our previously used window, using an interval of -7500,+7500 bp window around the TSS.
 
 
 ```{r}
-
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
 
 get_features_regions <- function(features_list = features, platform_regions = platform, epimed_database = epic, indexed_probes = feat_indexed_probes ){
 
@@ -163,20 +192,29 @@ regions_name <-unique(as.character(platform[,"genomic_feature"]))
 feat_indexed_probes_regions = get_features_regions(features_list=features)
 ```
 
+The obtained output is 2 level depht list, containing for each gene, the probes names for each region of the gene, along with a `sub_epic` list giving all probes indexed for the features and their coordinates. It is notable by exploring the obtained list that probes location are very unbalanced for a given gene : for example, our FKBP4 features has 11 probes on its P2000 region, 1 on exon and 5 on introns, none for the rest.
 
+This note led us to developp a tool to vizualize, for each gene, its region and probe distribution.
+
+## First vizualisation
+
+The following function takes as input a gene of interest, the data table of features such as given by `get_features`, our DMRs coordinates, our regions coordinates given by the `platform` database, the list containings probes indexed by features, and the window around the TSS the user wants to vizualise, which should be the same as selected in the `get_features` function.
 
 
 ```{r}
 
 
-plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = features, pf = platform, EPIMEDepic = epic, probes_index = feat_indexed_probes, window=c(10000,10000)){
+
+plot_selected_regions<- function(selected_gene = "FKBP4", features_list = features, DMRtable = DMR_table, DMR_map= DMR_candidates, pf = platform, EPIMEDepic = epic, probes_index = feat_indexed_probes, window=c(7500,7500)){
   
   ## get nearest DMR
   
-  DMRs_of_interest<-as.data.frame(tcga_lusc_DMR[which(tcga_lusc_DMR[,"closest_gene_name"]==selected_gene),])
-  
+  DMRs_of_interest<-DMRtable[which(DMRtable[,"closest_gene_name"]==selected_gene),]
+  #DMRs_of_interest<- DMR_table[intersect(DMR_table[,"DMR_id"],names(DMR_map[[selected_gene]])),]
   
 
+  
+  
   ## get data
     upstream = window[2]
     downstream = window[1]
@@ -270,6 +308,10 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = feat
       })
     }
     
+    
+    ##plot DMRs
+  
+    
     if(nrow(DMRs_of_interest)>0){
         coords <- apply(DMRs_of_interest,1,function(dmr){
             if(dmr[["is.hyper"]]=="hyper"){col="red"}
@@ -279,14 +321,15 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = feat
                border=col)
                coord <- as.numeric(c(dmr[["start"]],dmr[["end"]]))
          
-      })
+        })
+      colnames(coords)<-DMRs_of_interest[["DMR_id"]]
+      coords <- apply(coords,2,mean)
+      text(coords,rep(1.2,length(coords)),names(coords),cex = 0.5)
     }
-    colnames(coords)<-DMRs_of_interest[["DMR_id"]]
-    coords <- apply(coords,2,mean)
-    text(coords,rep(1.2,length(coords)),names(coords),cex = 0.5)
-  
     
-    ret = list(introns_coordinates = introns_coordinates,
+
+    
+    plot_coordinates <<- list(introns_coordinates = introns_coordinates,
                exons_coordinates = exons_coordinates,
                utr3_coordinates = utr3_coordinates,
                utr5_coordinates = utr5_coordinates,
@@ -295,7 +338,7 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = feat
                probes_coordinates = sub_epic,
                DMRs_of_interest = DMRs_of_interest)
     
-    return(ret)
+  
     
   
   
@@ -303,7 +346,36 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = feat
 
 
 plot_selected_regions("OTX1")
-
+plot_selected_regions("MCM2")
+plot_selected_regions("TROAP")
 ```
+Crosses stands for probes location (850k BedChip). Red bands stands for hypermethylated DMRs and blue ones for hypomethylated DMRs.
 
+Counter-intuitively, we do not observe the canonical structure of a gene such as P2000-5'UTR-TSS-introns/exons-3'UTR. Plus, we only observe 27 genes of 174 with DMRs in a range of 10kb or less away from the TSS (both sides). There is three patterns of plots : about regular plots, with coherent structure (eg : OTX1), plots with many missings coordinates (eg : MCM2) and genes with chaotic structure.
+
+About DMRs, we re-affected DMRs given by the other team, using the simple following criterium : a DMRs is considered as gene indexed if one of its extremum (its end or its start) is at least than 10kb from the gene's TSS.
+We vizualized each plot and decided to exclude the chaotic ones for now, to obtain a proper heatmap of methylation values per type of regions.
+
+
+
+```{r}
+#mypath <- file.path("/home","jakobim","projects","supergenes","results","Figures","regions_superup",paste("regions", rownames(features)[i], ".jpg", sep = ""))
+#zz = c(rep(NA,nrow(features)))
+#names(zz)<- rownames(features) 
+source("~/projects/supergenes/src/weirdness_script.R")
+
+plots_regions <- list()
+for (i in 1:length(rownames(features))){
+  jpeg(file=mypath[i])
+  plot_selected_regions(rownames(features)[i],window=c(7500,7500))
+  plots_regions[[i]] <- recordPlot()
+
+  rm(plot_coordinates)
+  graphics.off()
+}
+names(plots_regions)<-rownames(features)
+
+#replayPlot(plots_regions$FKBP4)
+table(weirdness)
+```
 

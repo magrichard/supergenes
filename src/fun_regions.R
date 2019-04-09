@@ -1,7 +1,7 @@
-
+################# Index regions per features################
 get_features_regions <- function(features_list = features, platform_regions = platform, epimed_database = epic, indexed_probes = feat_indexed_probes ){
 
-regions_name <-unique(as.character(platform[,"genomic_feature"]))
+  regions_name <-unique(as.character(platform[,"genomic_feature"]))
 
   feat_indexed_probes_regions <- lapply(1:nrow(features_list), function(index){
 
@@ -13,10 +13,10 @@ regions_name <-unique(as.character(platform[,"genomic_feature"]))
     pf_gene <- platform[which(platform[,"gene"]==gene),]
   
 
-    pf_regions = lapply(regions_name, function(region){
-      regions<-pf_gene[which(pf_gene[,"genomic_feature"]==region),]
-      return(regions)
-    })
+      pf_regions = lapply(regions_name, function(region){
+        regions<-pf_gene[which(pf_gene[,"genomic_feature"]==region),]
+        return(regions)
+      })
 
     names(pf_regions) <- regions_name
 
@@ -82,9 +82,57 @@ regions_name <-unique(as.character(platform[,"genomic_feature"]))
   return(ret)
   
   })
+  
   names(feat_indexed_probes_regions) <- rownames(features_list)
   return(feat_indexed_probes_regions)
 
 }
   
+################ Index DMR per features##################
+
+get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, regions_coordinates = platform, treshold = 7500){
+  
+  DMRtable<- DMRtable[order(DMRtable[,"DMR_id"]),]
+  
+  print("Extractig regions coordinates per available genes...")
+  
+  pf<- lapply(rownames(features_list), function(gene){
+    regions_coordinates[which(regions_coordinates[,"gene"]==gene),]
+  })
+  names(pf)<- rownames(features_list)
+  
+  
+  
+  print("Indexing DMRs per genes...")
+  
+  feat_indexed_DMRs <- lapply(1:length(rownames(features_list)), function(gene){
+    print(paste0("Indexing DMRs for ", rownames(features_list)[gene] ,"..."))
+    DMR_in_range <- lapply(1:nrow(DMRtable),function(index){
+      DMR <- DMRtable[index,]
+      
+      
+      if(as.numeric(DMR[["start"]]) > features_list[gene,"TSS"]){
+        foo <- abs(as.numeric(DMR[["start"]])-features_list[gene,"TSS"])
+        return(foo)
+      }
+      
+      if(as.numeric(DMR[["start"]]) < features_list[gene,"TSS"]){
+        foo <- abs(features_list[gene,"TSS"]-as.numeric(DMR[["end"]]))
+        return(foo)
+      }
+    })
+    
+    names(DMR_in_range)<-DMRtable[["DMR_id"]]
+    DMR_candidates <- unlist(DMR_in_range)[DMR_in_range <= treshold]
+    return(DMR_candidates)
+  })
+  names(feat_indexed_DMRs)<- rownames(features_list)
+  
+  
+  return(feat_indexed_DMRs)
+  
+  
+}
+
+#DMRs_tmp2 <- get_indexed_DMRs(DMRtable = DMR_table)
 
