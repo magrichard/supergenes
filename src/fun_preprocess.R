@@ -219,8 +219,8 @@ reduce_rows <- function(tmp_meth_data, map, indicator_func2 = mean, ...) {
 ############### get a one level map for genes per bin with a form such as 
 
 
-get_binmap <- function(feat_indexed_probes_bin = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))  {
-  bin_indexed_probes = lapply(feat_indexed_probes_bin, function(g){
+get_binmap <- function(map_to_reduce = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))  {
+  bin_indexed_probes = lapply(map_to_reduce, function(g){
     g[binlist]
   })
   bin_indexed_probes = unlist(bin_indexed_probes, recursive = FALSE)
@@ -230,26 +230,35 @@ get_binmap <- function(feat_indexed_probes_bin = feat_indexed_probes_bin, binlis
 
 #means_per_bins_per_genes_per_patient = reduce_rows(meth_lusc$data,binmap,mean,na.rm=T)
 
-subset_vals_per_bins <- function(values_per_patient = means_per_bins_per_genes_per_patient, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"), fun = mean, ...){
-  values_per_bins <- apply(values_per_patient,1,fun, na.rm=T) ### get mean per lines (gene_bin)
+subset_vals_per_bins<-function(data = meth_lusc$data,
+                               values_per_patient = means_per_regions_per_genes_per_patient,
+                               binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"),
+                               fun = mean,
+                               names = feat_indexed_probes, ...){
+  
+  values_per_bins <- apply(values_per_patient,1,mean , na.rm=T) 
   ret <- list()
   
   vals <- sapply(binlist, function(bin){
     ret[[bin]] <- values_per_bins[endsWith(names(values_per_bins),bin)]    
     return(ret)
     
-    }
+  }
   )
   
   
-  tmp = reduce_rows(meth_lusc$data, feat_indexed_probes, mean, na.rm=T)
-  overall = apply(tmp,1,fun,na.rm=T)
+  tmp = reduce_rows(data, feat_indexed_probes, fun, na.rm=T) ### note that you need feat_indexed_probes loaded into your environnment, it should be if you follow the pipeline.
+  overall = apply(tmp,1, mean ,na.rm=T)
   
   
   vals_per_genes <- do.call(cbind,vals)
-  vals_per_genes <- cbind(vals_per_genes,overall)
+  rownames(vals_per_genes)<-names(feat_indexed_probes_regions)
+  foo <- intersect(names(overall),rownames(vals_per_genes))
+  vals_per_genes <- cbind(vals_per_genes,overall[foo])
   colnames(vals_per_genes) <-c(binlist,"overall")
-  rownames(vals_per_genes) <- names(feat_indexed_probes_bin)
+  rownames(vals_per_genes) <- foo
+  vals_per_genes = vals_per_genes[order(vals_per_genes[,7]),]
+  
   
   return(vals_per_genes)
   
@@ -257,18 +266,15 @@ subset_vals_per_bins <- function(values_per_patient = means_per_bins_per_genes_p
 
 #################heatmap######################
 
-meth_heatmap <- function(data = means, dendrogram = "none", Rowv = NULL, Colv = NULL, ...){
-  require(gplots)
+meth_heatmap <- function(data = means, dendrogram = "none", Rowv = NULL, Colv = NULL, main= "", ...){
   
-  data = data[order(data[,7]),]
+  
   data = data[,-7]
-  
-  
   
   colors=c("green", "black", "red")
   cols = colorRampPalette(colors)(20)
   
-  foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, main=paste0("Mean of values (", nrow(data), " genes x ", ncol(data), "bins"), mar=c(10,5), useRaster=TRUE)
+  foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, mar=c(10,5), useRaster=TRUE, main= main)
   
-  return(foo)
+  
 }

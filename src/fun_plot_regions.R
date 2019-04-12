@@ -1,4 +1,12 @@
-plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = features, DMRtable = DMR_table, DMR_map= DMR_candidates, pf = platform, EPIMEDepic = epic, probes_index = feat_indexed_probes, window=c(10000,10000)){
+plot_selected_regions<- function(selected_gene = "ALDH3B1",
+                                 features_list = features,
+                                 DMRtable = DMR_table,
+                                 DMR_map, pf = platform,
+                                 epic_850k = epic,
+                                 epic_27k = epic27k,
+                                 epic_450k = epic450k,
+                                 probes_index = feat_indexed_probes,
+                                 window=c(10000,10000)){
   
   ## get nearest DMR
   
@@ -12,7 +20,7 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = feat
   downstream = window[1]
   pf_gene <- platform[which(platform[,"gene"]==selected_gene),2:4]
   tmp_probes <- feat_indexed_probes[[selected_gene]]
-  epic_tmp <- epic[tmp_probes,c("start","end")]
+  epic_tmp <- epic_450k[tmp_probes,c("start","End")]
   sub_epic <- epic_tmp[intersect(rownames(epic_tmp), rownames(meth_lusc$data)),]
   TSS <- features_list[selected_gene,"TSS"]
   
@@ -25,16 +33,43 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1", features_list = feat
   intergenic_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTER"),]
   p2000_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="P2000"),]
   
+  ## get colors
+  
+  cols<-sapply(rownames(sub_epic), function(probe){
+    
+    if(is.element(probe,rownames(epic450k))){
+      col ="darkcyan"
+    }
+    
+    if(is.element(probe,rownames(epic27k))){
+      
+      col = "chartreuse4"
+    }
+    if(is.element(probe,rownames(epic27k)) & is.element(probe,rownames(epic450k))){
+      
+      col = "red"
+    }
+    if(!is.element(probe,rownames(epic27k)) & !is.element(probe,rownames(epic450k))){
+      
+      col = "black"
+    }
+    
+    
+
+    return(col)
+  })
+  
   ## plot probes + TSS
   
-  plot(sub_epic$start, rep(3,length(sub_epic$start)), pch=3, xlim=c(TSS-downstream,TSS+upstream), cex=1, yaxt="n",
+  plot(sub_epic$start, rep(3,length(sub_epic$start)), pch=19, xlim=c(TSS-downstream,TSS+upstream), cex=1.2, yaxt="n",
        main = paste0(selected_gene,": Probes repartition among regions (nprobes = ",nrow(sub_epic),")"),
        xlab="Coordinates (in bp)",
        ylab="",
-       ylim=c(0,5))
+       ylim=c(0,5),
+       col = cols)
   
-  legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter"),inset=c(-0.12,0), xpd = TRUE, pch=15, col=c("grey","blue","red","green","orange","black"),bty="n")
-  
+  legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter"),inset=c(-0.12,0), xpd = TRUE, pch=15, col=c("grey","blue","red","green","orange","black"),bty="n",title = "regions")
+  legend("topright", c("450k","27k","both","850k only"),inset=c(-0.05,0), xpd=TRUE, pch = 19, col = c("darkcyan","chartreuse4","red","black"), bty="n",title ="Chip")
   #text(sub_epic$start,rep(4,length(sub_epic$start)), labels = rownames(sub_epic) ,cex = 0.8,srt = 80) ##probes label
   text(TSS,0.2,labels = paste0("TSS : ", TSS),cex = 0.7)
   
