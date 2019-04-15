@@ -1,0 +1,266 @@
+---
+title: "Improved Differential Analysis"
+author: "Jakobi Milan"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
+if(!exists("cgi_coordinates")){
+cgi_coordinates <- read.csv("~/projects/supergenes/results/tables/cgi_coordinates.csv", row.names=1)
+}
+
+if(!exists("chip_index")){
+chip_index <- read.csv("~/projects/supergenes/results/tables/probes_chip_index", header=TRUE, row.names=1)
+}
+
+
+
+
+if (!exists("tcga_lusc_DMR")) {
+  require(readr)
+  print("Loading LUSC DMR metadata...")
+tcga_lusc_DMR <- read_delim("~/projects/supergenes/data/dataAnais/TCGA-LUSC_cancer_DMRs.tsv", ",", escape_double = FALSE, trim_ws = TRUE)
+}
+
+if (!exists("cnv_lusc")) {
+  print("Loading LUSC copy number variations (cnv) data...")
+  cnv_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_cnv.rds")
+}
+
+if (!exists("platform")){
+  require(readr)
+platform <- as.data.frame(read.table("~/projects/supergenes/data/dataAnais/hg38_genomic_features.bed"))
+colnames(platform) <- c("chromosome","start","end","genomic_feature","gene")
+}
+
+if (!exists("trscr_lusc")) {
+  print("Loading LUSC transcription data...")
+trscr_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_trscr.rds")
+}
+
+if (!exists("meth_lusc")) {
+  print("Loading LUSC methylation data...")
+meth_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_meth.rds")
+meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
+meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
+}
+if (!exists("meth_tumoral")){
+meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
+meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
+}
+if(!exists("penda_superup_deregulated")) {
+  print("Loading superexpressed genes list...")
+  penda_superup_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx"))
+  rownames(penda_superup_deregulated) <- penda_superup_deregulated[,1]; penda_superup_deregulated <- penda_superup_deregulated[,-1]
+  
+  for (i in 1:dim(penda_superup_deregulated)[1]){
+    if (is.element(i,c(1:3,178:dim(penda_superup_deregulated)[1])))
+      {penda_superup_deregulated[i,1] <- 1}
+    else {penda_superup_deregulated[i,1] <- 0}
+    
+    if (i <= 177)
+      {penda_superup_deregulated[i,2] <- 1}
+    else {penda_superup_deregulated[i,2] <- 0}
+    }
+  penda_superup_deregulated <- rownames(penda_superup_deregulated[penda_superup_deregulated[,2] == 1, ])
+}  
+if(!exists("penda_superdown_deregulated")){
+  print("Loading underexpressed genes list...")
+  penda_superdown_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 2))
+  rownames(penda_superdown_deregulated) <- penda_superdown_deregulated[,1];
+  penda_superdown_deregulated <- penda_superdown_deregulated[,-1]
+          
+  for (i in 1:dim(penda_superdown_deregulated)[1]){
+    if (is.element(i,c(1:123,385:dim(penda_superdown_deregulated)[1]))) 
+    {penda_superdown_deregulated[i,1] <- 1}
+    else {penda_superdown_deregulated[i,1]<- 0}
+    
+    if(i <= 384)
+    {penda_superdown_deregulated[i,2] <- 1}
+    else {penda_superdown_deregulated[i,2]<- 0}
+    
+  }
+  
+  penda_superdown_deregulated <- rownames(penda_superdown_deregulated[penda_superdown_deregulated[,2] == 1, ])
+}
+  
+  
+if(!exists("penda_superconserved")){
+  print("Loading conserved genes list...")
+  penda_superconserved = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 3))
+  rownames(penda_superconserved) <- penda_superconserved[,1]; penda_superconserved <- penda_superconserved[,-1]
+    
+    for (i in 1:dim(penda_superconserved)[1]){
+      if (is.element(i,c(1:33,80:dim(penda_superconserved)[1])))
+      {penda_superconserved[i,1] <- 1}
+      else {penda_superconserved[i,1] <- 0}
+      
+      if(i <= 79)
+      {penda_superconserved[i,2] <- 1}
+      else {penda_superconserved[i,2] <- 0}
+    }
+  penda_superconserved <- rownames(penda_superconserved[penda_superconserved[,2] == 1, ])
+  
+}
+
+
+
+if (!exists("epic")) {
+  print("Loading Epic metadata .")
+  epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.gencode.v22.rds")
+  # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
+  epic = as.data.frame(epic_orig)
+  rownames(epic) = names(epic_orig)
+  head(epic)
+  pf_chr_colname = "seqnames"
+  pf_pos_colname = "start"
+  epic = epic[order(epic[[pf_chr_colname]], epic[[pf_pos_colname]]),]
+}
+
+
+
+
+hypo_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hypo"),]
+hyper_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hyper"),]
+
+targeted_genes <- penda_superup_deregulated
+DMR_table<-as.data.frame(tcga_lusc_DMR)
+meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
+meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
+
+
+
+
+source("~/projects/supergenes/src/fun_plot_regions.R")
+source("~/projects/supergenes/src/fun_preprocess.R")
+
+
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_indexed_probes_regions = get_features_regions(features_list=features)
+regions_map <- get_binmap(map_to_reduce = feat_indexed_probes_regions, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+```
+
+
+# Foreword
+
+  This vignette is the following of the two previous ones. It includes differential analysis for bins among the genes, a filter for a given treshold of copy number variations, and improved gene vizualisation plot.
+  
+
+
+# Preprocessing copy number variations.
+
+  We define here a very basic function returning a table indicating wheter a combination of gene-patient is used or not, annotating 1 for included and 0 if not.
+  
+```{r}
+process_cnv <- function(data_cnv = cnv_lusc$data, treshold = 0.3){
+  
+  processed_cnv<- epimedtools::monitored_apply(data_cnv,1,
+                                               function(gene){
+                                                 sapply(gene,
+                                                        function(patient){
+                                                          if(abs(patient) <=  treshold){patient <- 1}
+                                                          else{patient <- 0}
+                                                          
+                                                        })
+                                               })
+  return(t(processed_cnv))
+}
+cnv_processed<-process_cnv(cnv_lusc$data, treshold = 0.3)
+dim(cnv_processed)
+```
+
+We now do want to turn our methylation data matrix into a processed matrix in which probes values for a given individual are turned to `NA` if our filter based on a given treshold excludes it from our analysis because of a too high absolute copy number variation.
+
+To do so, we define a processing methylation data function which replaces gene-patient association with copy number variation over the treshold by `NA`. It returns a table based on already selected features, which is interesting because it removes unused values.
+
+
+```{r}
+process_meth_data<-function(cnv_processed_data = cnv_processed,
+                            meth_data = meth_lusc$data,
+                            probes_index = feat_indexed_probes,
+                            features_list = features){
+
+
+
+targeted_cnv <- cnv_processed_data[intersect(rownames(cnv_processed_data),rownames(features_list)),
+                                   intersect(colnames(cnv_processed_data),colnames(meth_data))]
+  
+    methvals_per_genes <- epimedtools::monitored_apply(mod = 10, t(t(names(probes_index))), 1, function(f) {
+      
+      
+    tmp_probes <- intersect(probes_index[[f]],rownames(meth_data))
+    selected_meth <- meth_data[tmp_probes,intersect(colnames(targeted_cnv),colnames(meth_data))]  #get data for the f gene
+    
+    
+    
+    dummy_matrix <- matrix(nrow = nrow(selected_meth),ncol = ncol(selected_meth),
+                       dimnames = list(rownames(selected_meth),colnames(selected_meth)))
+    
+    
+    tmp<-apply(t(t(colnames(selected_meth))),1,function(i) {
+      if(targeted_cnv[f,i] != 1){dummy_matrix[,i] <- NA }      #process values per patient for the f gene
+      else{dummy_matrix[,i]<-selected_meth[,i]}
+    })
+    
+    
+    methvals <- do.call(cbind,tmp)                      #processed meth values for a given f gene
+    return(methvals)
+    
+  })
+  
+  meth_processed <- do.call(rbind,methvals_per_genes) 
+  colnames(meth_processed)<- colnames(targeted_cnv)
+   
+  return(meth_processed)
+}
+
+
+meth_processed <- process_meth_data()
+```
+
+
+
+# Vizualising obtained processed datas
+
+```{r}
+meth_processed_tumoral <- meth_processed[,intersect(rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),]),colnames(meth_processed))]
+meth_processed_normal <- meth_processed[,intersect(rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),]),colnames(meth_processed))]
+
+
+mean_values_normal_tissues <- apply(meth_processed_normal,1,mean,na.rm=T)
+meth_processed_diff <- t(sapply(1:nrow(meth_processed_tumoral), function(i) meth_processed_tumoral[i,] - mean_values_normal_tissues[i]))
+rownames(meth_processed_diff)<-rownames(meth_processed)
+dim(meth_processed_normal)
+dim(meth_processed_tumoral)
+dim(meth_processed_diff)
+
+```
+
+```{r}
+means_per_regions_per_genes_per_patient_diff <- reduce_rows(meth_processed_diff,regions_map, mean ,na.rm=T)
+
+means_processed_diff <- subset_vals_per_bins(data = meth_processed_diff,
+values_per_patient = means_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = mean)
+
+meth_heatmap(means_processed_diff, main = "mean of means: processed data")
+```
+
+```{r}
+vars_per_regions_per_genes_per_patient_diff = reduce_rows(meth_processed_diff,regions_map,var ,na.rm=T)
+
+vars_processed_diff = subset_vals_per_bins(data= meth_processed_diff,
+values_per_patient = vars_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars_processed_diff, main = "mean of vars : processed data")
+```
+

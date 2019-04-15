@@ -24,3 +24,28 @@ length(chr_2)
 table(chr_2)
 prop.table(table(chr_2))
 barplot(table(chr_2))
+
+meth_data_3 <- subset(meth_data_2, !(rownames(epic27k) %in% rownames(meth_data_2)))
+chr_3 <- meth_lusc$platform[rownames(meth_data_3),1]
+length(chr_3)
+table(chr_3)
+prop.table(table(chr_3))
+barplot(table(chr_3))
+
+
+
+meth_data_4 <- subset(meth_lusc$data, !(rownames(meth_lusc$data) %in% rownames(epic450k)))
+chr_4 <- meth_lusc$platform[rownames(meth_data_4),1]
+length(chr_4)
+table(chr_4)
+prop.table(table(chr_4))
+barplot(table(chr_4))
+
+
+
+
+
+
+
+
+

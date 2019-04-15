@@ -1,28 +1,33 @@
-plot_selected_regions<- function(selected_gene = "ALDH3B1",
+plot_selected_regions<- function(selected_gene = "ANLN",
                                  features_list = features,
                                  DMRtable = DMR_table,
-                                 DMR_map, pf = platform,
-                                 epic_850k = epic,
-                                 epic_27k = epic27k,
-                                 epic_450k = epic450k,
+                                 cgi_table = cgi_coordinates,
+                                 DMR_map,
+                                 pf = platform,
+                                 epimed = epic,
+                                 chips_index = chip_index,
                                  probes_index = feat_indexed_probes,
                                  window=c(10000,10000)){
   
   ## get nearest DMR
-  
   DMRs_of_interest<-DMRtable[which(DMRtable[,"closest_gene_name"]==selected_gene),]
   #DMRs_of_interest<- DMR_table[intersect(DMR_table[,"DMR_id"],names(DMR_map[[selected_gene]])),]
   
   
   
   ## get data
+  
+  
   upstream = window[2]
   downstream = window[1]
   pf_gene <- platform[which(platform[,"gene"]==selected_gene),2:4]
   tmp_probes <- feat_indexed_probes[[selected_gene]]
-  epic_tmp <- epic_450k[tmp_probes,c("start","End")]
-  sub_epic <- epic_tmp[intersect(rownames(epic_tmp), rownames(meth_lusc$data)),]
+  sub_epic_tmp <- epimed[tmp_probes,c("start","end")]
+  sub_epic_tmp <- sub_epic_tmp[intersect(rownames(sub_epic_tmp), rownames(meth_lusc$data)),]
+  sub_epic <- cbind(sub_epic_tmp,cgi_table[intersect(rownames(sub_epic_tmp),rownames(cgi_table)),])
   TSS <- features_list[selected_gene,"TSS"]
+  chip_index_of_interest <- chips_index[intersect(rownames(sub_epic),rownames(chips_index)),]
+  
   
   ## get subset of coordinates
   
@@ -37,22 +42,34 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1",
   
   cols<-sapply(rownames(sub_epic), function(probe){
     
-    if(is.element(probe,rownames(epic450k))){
-      col ="darkcyan"
-    }
+    if(chip_index_of_interest[probe,"epic850k"] == 1)
+      {col ="gray55"}
     
-    if(is.element(probe,rownames(epic27k))){
-      
-      col = "chartreuse4"
-    }
-    if(is.element(probe,rownames(epic27k)) & is.element(probe,rownames(epic450k))){
-      
-      col = "red"
-    }
-    if(!is.element(probe,rownames(epic27k)) & !is.element(probe,rownames(epic450k))){
-      
-      col = "black"
-    }
+    if(chip_index_of_interest[probe,"epic450k"] == 1)
+      {col = "darkolivegreen"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1)
+      {col = "darkorchid"}
+    
+    
+    if(chip_index_of_interest[probe,"epic850k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1)
+      {col = "darkcyan"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic850k"] == 1)
+      {col = "darkred"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1)
+      {col = "goldenrod"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1 & chip_index_of_interest[probe,"epic850k"] == 1)
+      {col = "black"}
+    
+    
+    
     
     
 
@@ -68,13 +85,38 @@ plot_selected_regions<- function(selected_gene = "ALDH3B1",
        ylim=c(0,5),
        col = cols)
   
-  legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter"),inset=c(-0.12,0), xpd = TRUE, pch=15, col=c("grey","blue","red","green","orange","black"),bty="n",title = "regions")
-  legend("topright", c("450k","27k","both","850k only"),inset=c(-0.05,0), xpd=TRUE, pch = 19, col = c("darkcyan","chartreuse4","red","black"), bty="n",title ="Chip")
+  legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter"),
+         inset=c(-0.12,0),
+         xpd = TRUE,
+         pch=15,
+         col=c("grey","blue","red","green","orange","black"),
+         bty="n",title = "Region")
+  
+  legend("topright",
+         c("850k","450k","27k","850-450","850-27","450-27","all"),
+         inset=c(-0.05,0),
+         xpd=TRUE,
+         pch = 19,
+         col = c("gray55","darkolivegreen","darkorchid","darkcyan","darkred","goldenrod","black"),
+         title ="Chip index")
   #text(sub_epic$start,rep(4,length(sub_epic$start)), labels = rownames(sub_epic) ,cex = 0.8,srt = 80) ##probes label
   text(TSS,0.2,labels = paste0("TSS : ", TSS),cex = 0.7)
   
   points(TSS, 0.5, pch=9, col="red")
   abline(h=0.5, lty=3, lwd = 1)
+  
+  
+  
+  ##plot CGIs
+  
+ for (i in 1:nrow(sub_epic)){
+    
+   rect(as.numeric(as.character(sub_epic[i,"cgi_start"])),2.7, as.numeric(as.character(sub_epic[i,"cgi_end"])),2.6,
+         density = 5)
+  }
+  
+  
+  
   
   ## plot regions
   
