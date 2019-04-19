@@ -173,7 +173,7 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
 }
 
 
-subfeatures = get_features(penda_superdown_deregulated, trscr_lusc, up_str = 5000, dwn_str = 5000, nb_probe_min = 1)
+features = get_features(penda_superup_deregulated, trscr_lusc, up_str = 7500, dwn_str = 7500, nb_probe_min = 1)
 ```
 
 We get a list of 377 features, (starting from 381), since 4 were removed due to lack of probes under our predefined constraints. To get a proper vizualisation of our methylation profiles, we are going to split our probes into bins defined as follows :
@@ -185,7 +185,7 @@ We get a list of 377 features, (starting from 381), since 4 were removed due to 
 the 3 others bins are defined symmetrically ([TSS,500],[500,1000],[1000,2500]). The following function wich is a variant of the previous one map probes according to those bins
 
 ```{r}
-get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
+get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
   print("Creating a list of features...")
   features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
 
@@ -204,7 +204,7 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
     return(ret)
   })
   names(chrs_indexed_epic) <- chrs
-
+ 
 
 
 
@@ -297,7 +297,7 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
   return(feat_indexed_probes_bin)
 }
 
-feat_indexed_probes_bin = get_features_bins(penda_superdown_deregulated, index_pathology = 2,trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1)
+feat_indexed_probes_bin = get_features_bins(penda_superup_deregulated, index_pathology = 2,trscr_lusc, up_str = 7500, dwn_str = 7500, nb_probe_min = 1)
 ```
 
 We have now a map of features with the following architecture : `feat_indexed_probes_bin$gene$bin1`

@@ -1,6 +1,6 @@
 ##################### Plot probes position along a selected gene given a features object #############
 
-plot_selected_probes <- function(selected_gene = "ALDH3B1",binlist=c("bin1","bin2","bin3","bin4","bin5","bin6"), meth_data = meth_lusc$data, trscr_study = trscr_lusc){
+plot_genes_probes <- function(selected_gene = "ALDH3B1",binlist=c("bin1","bin2","bin3","bin4","bin5","bin6"), meth_data = meth_lusc$data, trscr_study = trscr_lusc, distributions_per_bins = means_per_bins_per_genes_per_patient){
 
   if(trscr_lusc$platform[selected_gene,"strand"]=="+") {tmp = "3'->5'"} else {tmp = "3'->5'"}
   
@@ -23,7 +23,7 @@ plot_selected_probes <- function(selected_gene = "ALDH3B1",binlist=c("bin1","bin
   
   
   
-  tmp = means_per_bins_per_genes_per_patient[startsWith(rownames(means_per_bins_per_genes_per_patient),selected_gene),]
+  tmp = distributions_per_bins[startsWith(rownames(distributions_per_bins),selected_gene),]
   xlabs = rownames(tmp)
   boxplot(t(tmp),xaxt="n",main = "Distribution of mean Mval per bin")
   axis(side = 1, at=1:6, labels = xlabs, tick = FALSE, las=2)
@@ -37,7 +37,7 @@ plot_selected_probes <- function(selected_gene = "ALDH3B1",binlist=c("bin1","bin
 
 
 
-plot_selected_gene  = function(selected_gene = selected_gene, expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = feat_indexed_probes, ...){
+plot_gene_meth  = function(selected_gene = selected_gene, expr_data = trscr_lusc$data, meth_data = meth_lusc$data, probes_index = feat_indexed_probes, ...){
   
   
   expr_data = expr_data[,intersect(colnames(expr_data),colnames(meth_data))]  
@@ -56,12 +56,17 @@ plot_selected_gene  = function(selected_gene = selected_gene, expr_data = trscr_
   colors=c("green", "black", "red")
   cols = colorRampPalette(colors)(100)
   
+  oldw <- getOption("warn")
+  options(warn = -1)
+  
   heatmap = image(methvals_of_interest, Rowv = NA, Colv = NA, axes=FALSE, col=cols, main="Methylation")
   axis(side = 1, at=seq(0,1,1/(nrow(methvals_of_interest)-1)), labels = rownames(methvals_of_interest), tick = FALSE, las=2)
   legend("left", c("hypo", "neutral", "hyper"), xpd = TRUE, pch=15, inset = c(-0.35,-0.25), col=c("green","black","red"),bty="n")
   
   mtext(paste(noquote(selected_gene),"Analysis",sep= " "), outer=TRUE,  cex=2, line=-2)
   
+  
+  options(warn = oldw)
 }
 
 
@@ -69,66 +74,65 @@ plot_selected_gene  = function(selected_gene = selected_gene, expr_data = trscr_
 
 
 
-  plot_selected_regions<- function(selected_gene = "ALDH3B1",
-features_list = features,
-DMRtable = DMR_table,
-cgi_coordinates = cgi,
-DMR_map, pf = platform,
-epic_850k = epic,
-epic_27k = epic27k,
-epic_450k = epic450k,
-probes_index = feat_indexed_probes,
-window=c(10000,10000)){
+  plot_genes_regions<- function(selected_gene = "ALDH3B1",
+    features_list = features,
+    DMRtable = DMR_table,
+    cgi_coordinates = cgi,
+    DMR_map, pf = platform,
+    epic_850k = epic,
+    epic_27k = epic27k,
+    epic_450k = epic450k,
+    probes_index = feat_indexed_probes,
+    window=c(10000,10000)){
   
-  ## get nearest DMR
-  
-  DMRs_of_interest<-DMRtable[which(DMRtable[,"closest_gene_name"]==selected_gene),]
-  #DMRs_of_interest<- DMR_table[intersect(DMR_table[,"DMR_id"],names(DMR_map[[selected_gene]])),]
-  
-  
-  
-  ## get data
-  upstream = window[2]
-  downstream = window[1]
-  pf_gene <- platform[which(platform[,"gene"]==selected_gene),2:4]
-  tmp_probes <- feat_indexed_probes[[selected_gene]]
-  epic_tmp <- epic_450k[tmp_probes,c("start","End")]
-  sub_epic <- epic_tmp[intersect(rownames(epic_tmp), rownames(meth_lusc$data)),]
-  sub_epic <- cbind(sub_epic,cgi_coordinates[intersect(rownames(sub_epic),rownames(cgi_coordinates)),])
-  TSS <- features_list[selected_gene,"TSS"]
-  
-  ## get subset of coordinates
-  
-  introns_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTRON"),]
-  exons_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="CDS"),]
-  utr3_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="3UTR"),]
-  utr5_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="5UTR"),]
-  intergenic_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTER"),]
-  p2000_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="P2000"),]
+    ## get nearest DMR
+    
+    DMRs_of_interest<-DMRtable[which(DMRtable[,"closest_gene_name"]==selected_gene),]
+    #DMRs_of_interest<- DMR_table[intersect(DMR_table[,"DMR_id"],names(DMR_map[[selected_gene]])),]
+    
+    
+    
+    ## get data
+    upstream = window[2]
+    downstream = window[1]
+    pf_gene <- platform[which(platform[,"gene"]==selected_gene),2:4]
+    tmp_probes <- feat_indexed_probes[[selected_gene]]
+    epic_tmp <- epic_450k[tmp_probes,c("start","End")]
+    sub_epic <- epic_tmp[intersect(rownames(epic_tmp), rownames(meth_lusc$data)),]
+    sub_epic <- cbind(sub_epic,cgi_coordinates[intersect(rownames(sub_epic),rownames(cgi_coordinates)),])
+    TSS <- features_list[selected_gene,"TSS"]
+    
+    ## get subset of coordinates
+    
+    introns_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTRON"),]
+    exons_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="CDS"),]
+    utr3_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="3UTR"),]
+    utr5_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="5UTR"),]
+    intergenic_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTER"),]
+    p2000_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="P2000"),]
   
   ## get colors
   
-  cols<-sapply(rownames(sub_epic), function(probe){
+    cols<-sapply(rownames(sub_epic), function(probe){
     
-    if(is.element(probe,rownames(epic450k))){
-      col ="darkcyan"
-    }
-    
-    if(is.element(probe,rownames(epic27k))){
+      if(is.element(probe,rownames(epic450k))){
+        col ="darkcyan"
+      }
       
-      col = "chartreuse4"
-    }
-    if(is.element(probe,rownames(epic27k)) & is.element(probe,rownames(epic450k))){
+      if(is.element(probe,rownames(epic27k))){
+        
+        col = "chartreuse4"
+      }
+      if(is.element(probe,rownames(epic27k)) & is.element(probe,rownames(epic450k))){
+        
+        col = "red"
+      }
+      if(!is.element(probe,rownames(epic27k)) & !is.element(probe,rownames(epic450k))){
+        
+        col = "black"
+      }
       
-      col = "red"
-    }
-    if(!is.element(probe,rownames(epic27k)) & !is.element(probe,rownames(epic450k))){
       
-      col = "black"
-    }
-    
-    
-    
     return(col)
   })
   
@@ -254,4 +258,24 @@ window=c(10000,10000)){
 }
 
 
-
+  #################heatmap######################
+  
+  meth_heatmap <-function(data = means, dendrogram = "none", Rowv = NULL, Colv = NULL,cols = NULL, ...){
+    
+    if(!exists("main")){
+      main = deparse(substitute(data))
+    }
+    
+    main=deparse(substitute(data))
+    data = data[,-7]
+    
+    if(is.null(cols)){
+      colors=c("green", "black", "red")
+      cols = colorRampPalette(colors)(100)
+    }
+    
+    foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, mar=c(10,5), useRaster=TRUE,main=main ,...)
+    
+    
+}
+  

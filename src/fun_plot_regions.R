@@ -20,7 +20,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
   
   upstream = window[2]
   downstream = window[1]
-  pf_gene <- platform[which(platform[,"gene"]==selected_gene),2:4]
+  pf_gene <- pf[which(pf[,"gene"]==selected_gene),2:4]
   tmp_probes <- feat_indexed_probes[[selected_gene]]
   sub_epic_tmp <- epimed[tmp_probes,c("start","end")]
   sub_epic_tmp <- sub_epic_tmp[intersect(rownames(sub_epic_tmp), rownames(meth_lusc$data)),]
@@ -85,11 +85,11 @@ plot_selected_regions<- function(selected_gene = "ANLN",
        ylim=c(0,5),
        col = cols)
   
-  legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter"),
+  legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter","hypoDMR","hyperDMR","CGI"),
          inset=c(-0.12,0),
          xpd = TRUE,
          pch=15,
-         col=c("grey","blue","red","green","orange","black"),
+         col=c("grey","darkslategray1","firebrick","darkseagreen","orange","black","blue","red","gray1"),
          bty="n",title = "Region")
   
   legend("topright",
@@ -99,6 +99,8 @@ plot_selected_regions<- function(selected_gene = "ANLN",
          pch = 19,
          col = c("gray55","darkolivegreen","darkorchid","darkcyan","darkred","goldenrod","black"),
          title ="Chip index")
+  
+
   #text(sub_epic$start,rep(4,length(sub_epic$start)), labels = rownames(sub_epic) ,cex = 0.8,srt = 80) ##probes label
   text(TSS,0.2,labels = paste0("TSS : ", TSS),cex = 0.7)
   
@@ -112,7 +114,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
  for (i in 1:nrow(sub_epic)){
     
    rect(as.numeric(as.character(sub_epic[i,"cgi_start"])),2.7, as.numeric(as.character(sub_epic[i,"cgi_end"])),2.6,
-         density = 5)
+         col ="gray1")
   }
   
   
@@ -135,7 +137,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
   if (nrow(exons_coordinates)>0){
     apply(exons_coordinates,1, function(exon){
       rect(exon[["start"]],1.5, exon[["end"]], 2.5,
-           col="blue",
+           col="darkslategray1",
            border="black")
     })
   }
@@ -144,7 +146,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
   if(nrow(introns_coordinates)>0){
     apply(introns_coordinates,1, function(intron){
       rect(intron[["start"]],1.5, intron[["end"]],2.5,
-           col="red",
+           col="firebrick",
            border="black")
     })
   }
@@ -152,7 +154,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
   if(nrow(utr3_coordinates)>0){
     apply(utr3_coordinates,1, function(utr3){
       rect(utr3[["start"]],1.5, utr3[["end"]],2.5,
-           col="green",
+           col="darkseagreen",
            border="black")
       
     })

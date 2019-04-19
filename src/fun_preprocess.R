@@ -271,7 +271,7 @@ get_features_regions <- function(features_list = features, platform_regions = pl
 
 ################ Index DMR per features##################
 
-get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, regions_coordinates = platform, treshold = 7500){
+get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, regions_coordinates = platform, treshold = 100000){
   
   DMRtable<- DMRtable[order(DMRtable[,"DMR_id"]),]
   
@@ -286,27 +286,38 @@ get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, reg
   
   print("Indexing DMRs per genes...")
   
-  feat_indexed_DMRs <- lapply(1:length(rownames(features_list)), function(gene){
-    print(paste0("Indexing DMRs for ", rownames(features_list)[gene] ,"..."))
-    DMR_in_range <- lapply(1:nrow(DMRtable),function(index){
-      DMR <- DMRtable[index,]
-      
-      
-      if(as.numeric(DMR[["start"]]) > features_list[gene,"TSS"]){
-        foo <- abs(as.numeric(DMR[["start"]])-features_list[gene,"TSS"])
-        return(foo)
-      }
-      
-      if(as.numeric(DMR[["start"]]) < features_list[gene,"TSS"]){
-        foo <- abs(features_list[gene,"TSS"]-as.numeric(DMR[["end"]]))
-        return(foo)
-      }
-    })
+  feat_indexed_DMRs <- epimedtools::monitored_apply(t(t(rownames(features_list))),mod=10,1, function(gene){
     
-    names(DMR_in_range)<-DMRtable[["DMR_id"]]
-    DMR_candidates <- unlist(DMR_in_range)[DMR_in_range <= treshold]
-    return(DMR_candidates)
+    print(paste0("Indexing DMRs for ", gene ,"..."))
+    
+    DMRs_of_interest <- DMRtable[which(DMRtable[,1]==features[gene,1]),]
+    
+    DMR_in_range <- lapply(1:nrow(DMRs_of_interest),function(index){
+      DMR <- DMRs_of_interest[index,]
+      
+       if(nrow(DMRs_of_interest) > 0){
+        if(as.numeric(DMR[["start"]]) > features_list[gene,"TSS"]){
+          foo <- abs(as.numeric(DMR[["start"]])-features_list[gene,"TSS"])
+          return(foo)
+        }
+        
+        if(as.numeric(DMR[["start"]]) < features_list[gene,"TSS"]){
+          foo <- abs(features_list[gene,"TSS"]-as.numeric(DMR[["end"]]))
+          return(foo)
+        }
+       }
+       
+    })
+    if (nrow(DMRs_of_interest) > 0){
+      names(DMR_in_range)<-DMRs_of_interest[["DMR_id"]]
+      DMR_candidates <- unlist(DMR_in_range)[DMR_in_range <= treshold]
+    }
+    else{DMR_candidates<- NULL}
+    
+      return(DMR_candidates)
+      
   })
+  
   names(feat_indexed_DMRs)<- rownames(features_list)
   
   
@@ -363,15 +374,17 @@ reduce_rows <- function(tmp_meth_data, map, indicator_func2 = mean, ...) {
 
 
 get_binmap <- function(map_to_reduce = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))  {
+  
   bin_indexed_probes = lapply(map_to_reduce, function(g){
     g[binlist]
   })
   bin_indexed_probes = unlist(bin_indexed_probes, recursive = FALSE)
+  
 }
 
 ####################### get means per bins per genes #############################
 
-#means_per_bins_per_genes_per_patient = reduce_rows(meth_lusc$data,binmap,mean,na.rm=T)
+#means_per_bins_per_genes_per_patient = (meth_lusc$data,binmap,mean,na.rm=T)
 
 subset_vals_per_bins<-function(data = meth_lusc$data,
                                values_per_patient = means_per_regions_per_genes_per_patient,
@@ -379,7 +392,7 @@ subset_vals_per_bins<-function(data = meth_lusc$data,
                                fun = mean,
                                names = feat_indexed_probes, ...){
   
-  values_per_bins <- apply(values_per_patient,1,mean , na.rm=T) 
+  values_per_bins <- apply(values_per_patient,1,mean,...) 
   ret <- list()
   
   vals <- sapply(binlist, function(bin){
@@ -390,7 +403,7 @@ subset_vals_per_bins<-function(data = meth_lusc$data,
   )
   
   
-  tmp = reduce_rows(data, feat_indexed_probes, fun, na.rm=T) ### note that you need feat_indexed_probes loaded into your environnment, it should be if you follow the pipeline.
+  tmp = reduce_rows(data, feat_indexed_probes, fun,...) ### note that you need feat_indexed_probes loaded into your environnment, it should be if you follow the pipeline.
   overall = apply(tmp,1, mean ,na.rm=T)
   
   
@@ -407,20 +420,6 @@ subset_vals_per_bins<-function(data = meth_lusc$data,
   
 }
 
-#################heatmap######################
-
-meth_heatmap <- function(data = means, dendrogram = "none", Rowv = NULL, Colv = NULL, main= "", ...){
-  
-  
-  data = data[,-7]
-  
-  colors=c("green", "black", "red")
-  cols = colorRampPalette(colors)(20)
-  
-  foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, mar=c(10,5), useRaster=TRUE, main= main)
-  
-  
-}
 
 
 

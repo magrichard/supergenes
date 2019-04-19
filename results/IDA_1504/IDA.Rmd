@@ -24,10 +24,11 @@ chip_index <- read.csv("~/projects/supergenes/results/tables/probes_chip_index",
 
 
 
-if (!exists("tcga_lusc_DMR")) {
+if (!exists("DMR_table")) {
   require(readr)
   print("Loading LUSC DMR metadata...")
-tcga_lusc_DMR <- read_delim("~/projects/supergenes/data/dataAnais/TCGA-LUSC_cancer_DMRs.tsv", ",", escape_double = FALSE, trim_ws = TRUE)
+DMR_table <- as.data.frame(read_delim("~/projects/supergenes/data/dataAnais/TCGA-LUSC_cancer_DMRs.tsv", ",", escape_double = FALSE, trim_ws = TRUE))
+
 }
 
 if (!exists("cnv_lusc")) {
@@ -37,8 +38,7 @@ if (!exists("cnv_lusc")) {
 
 if (!exists("platform")){
   require(readr)
-platform <- as.data.frame(read.table("~/projects/supergenes/data/dataAnais/hg38_genomic_features.bed"))
-colnames(platform) <- c("chromosome","start","end","genomic_feature","gene")
+platform <- read.csv("~/projects/supergenes/results/tables/biological_regions.csv", row.names=1)
 }
 
 if (!exists("trscr_lusc")) {
@@ -128,11 +128,13 @@ if (!exists("epic")) {
 
 
 
-hypo_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hypo"),]
-hyper_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hyper"),]
+#hypo_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hypo"),]
+#hyper_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hyper"),]
 
-targeted_genes <- penda_superup_deregulated
-DMR_table<-as.data.frame(tcga_lusc_DMR)
+
+
+
+
 meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
 meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
 
@@ -141,8 +143,13 @@ meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_gr
 
 source("~/projects/supergenes/src/fun_plot_regions.R")
 source("~/projects/supergenes/src/fun_preprocess.R")
+source("~/projects/supergenes/src/fun_calculus.R")
 
 
+```
+
+```{r}
+targeted_genes <- penda_superup_deregulated
 features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
 feat_indexed_probes_regions = get_features_regions(features_list=features)
 regions_map <- get_binmap(map_to_reduce = feat_indexed_probes_regions, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
@@ -252,15 +259,37 @@ values_per_patient = means_per_regions_per_genes_per_patient_diff,
 c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = mean)
 
 meth_heatmap(means_processed_diff, main = "mean of means: processed data")
+
 ```
 
 ```{r}
-vars_per_regions_per_genes_per_patient_diff = reduce_rows(meth_processed_diff,regions_map,var ,na.rm=T)
+vars_per_regions_per_genes_per_patient_diff = reduce_rows(meth_processed_diff,regions_map,sd ,na.rm=T)
 
 vars_processed_diff = subset_vals_per_bins(data= meth_processed_diff,
 values_per_patient = vars_per_regions_per_genes_per_patient_diff,
-c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = sd)
 
 meth_heatmap(vars_processed_diff, main = "mean of vars : processed data")
+```
+
+# Visualizing bins with differential values
+
+
+```{r}
+feat_indexed_probes_bin = get_features_bins(penda_superup_deregulated, index_pathology = 2,trscr_lusc, up_str = 7500, dwn_str = 7500, nb_probe_min = 1)
+binmap = get_binmap(map_to_reduce = feat_indexed_probes_bin, binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"))
+means_per_bins_per_genes_per_patient = reduce_rows(meth_processed_diff,binmap,mean,na.rm=T)
+means = subset_vals_per_bins(values_per_patient = means_per_bins_per_genes_per_patient)
+meth_heatmap(means, main= "Mean of means: 177 genes x 6 regions")
+```
+
+
+```{r}
+rsd_per_regions_per_genes_per_patient_diff = reduce_rows(meth_processed_diff,binmap, rsd, na.rm=T)
+
+rsd_processed_diff = subset_vals_per_bins(data= meth_processed_diff,
+values_per_patient = rsd_per_regions_per_genes_per_patient_diff, fun = rsd, na.rm=T)
+
+meth_heatmap(log10(vars_processed_diff), main = "mean of vars : processed data")
 ```
 
