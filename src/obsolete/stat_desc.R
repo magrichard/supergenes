@@ -1,14 +1,30 @@
-rsd_probes <- epimedtools::monitored_apply(meth_lusc$data,1, rsd,na.rm=T)
-sd_probes <- epimedtools::monitored_apply(meth_lusc$data,1, sd,na.rm=T)
-means_probes <- epimedtools::monitored_apply(meth_lusc$data,1, mean,na.rm=T)
-stats_probes <- cbind(sd_probes,means_probes,rsd_probes)
-stats_probes<- stats_probes[which(!is.na(stats_probes[,1])),]
+
+features <- get_features(penda_superup_deregulated, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+layout(matrix(1:2,1), respect=TRUE)
+
+plot_mean_vs_sd <- function(genes_list = feat_indexed_probes,
+                            data = meth_tumoral,...){
+  
+
+  
+  poi <-  unique(unlist(genes_list))
+  meth <- data[intersect(rownames(data),poi),]
+  
+  rsd_probes <- epimedtools::monitored_apply(meth,1, rsd,na.rm=T)
+  sd_probes <- epimedtools::monitored_apply(meth,1, sd,na.rm=T)
+  means_probes <- epimedtools::monitored_apply(meth,1, mean,na.rm=T)
+  
+  tmp_stats <- cbind(means_probes[!is.na(means_probes)],sd_probes[!is.na(sd_probes)],rsd_probes[!is.na(rsd_probes)])
+  stats <- tmp_stats[order(tmp_stats[,1]),]
+  colnames(stats)<- c("means","sd","rsd")
+  
+  
+  plot(stats[,"means"],stats[,"sd"],
+       xlab = paste0("mean per probe (nprobes = ",nrow(stats)," + ",nrow(meth)-nrow(stats)," NAs )"),
+       ylab="sd per probe",...)
+  
+  return(stats)
+}
 
 
 
-genes_values <- reduce_rows(meth_lusc$data,feat_indexed_probes, mean,na.rm=T)
-sd_genes <- epimedtools::monitored_apply(genes_values,1, sd,na.rm=T)
-means_genes<- epimedtools::monitored_apply(genes_values,1, mean,na.rm=T)
-rsd_genes <- epimedtools::monitored_apply(genes_values,1, rsd,na.rm=T)
-stats_genes <- cbind(sd_genes,means_genes,rsd_genes)
-meth_heatmap(stats_genes)

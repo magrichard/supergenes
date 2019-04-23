@@ -1,3 +1,50 @@
+
+################### plot mean vs sd vals per probe ######################
+
+
+
+#features <- get_features(penda_superup_deregulated, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+#layout(matrix(1:2,1), respect=TRUE)
+
+plot_mean_vs_sd <- function(genes_list = feat_indexed_probes,
+                            data = meth_tumoral,...){
+  
+  
+  
+  poi <-  unique(unlist(genes_list))
+  meth <- data[intersect(rownames(data),poi),]
+  
+  rsd_probes <- epimedtools::monitored_apply(meth,1, rsd,na.rm=T)
+  sd_probes <- epimedtools::monitored_apply(meth,1, sd,na.rm=T)
+  means_probes <- epimedtools::monitored_apply(meth,1, mean,na.rm=T)
+  
+  tmp_stats <- cbind(means_probes[!is.na(means_probes)],sd_probes[!is.na(sd_probes)],rsd_probes[!is.na(rsd_probes)])
+  stats <- tmp_stats[order(tmp_stats[,1]),]
+  colnames(stats)<- c("means","sd","rsd")
+  
+  
+  plot(stats[,"means"],stats[,"sd"],
+       xlab = paste0("mean per probe \n (nprobes = ",nrow(stats)," + ",nrow(meth)-nrow(stats)," NAs )"),
+       ylab="sd per probe",...)
+  
+  return(stats)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ##################### Plot probes position along a selected gene given a features object #############
 
 plot_genes_probes <- function(selected_gene = "ALDH3B1",binlist=c("bin1","bin2","bin3","bin4","bin5","bin6"), meth_data = meth_lusc$data, trscr_study = trscr_lusc, distributions_per_bins = means_per_bins_per_genes_per_patient){
@@ -56,17 +103,16 @@ plot_gene_meth  = function(selected_gene = selected_gene, expr_data = trscr_lusc
   colors=c("green", "black", "red")
   cols = colorRampPalette(colors)(100)
   
-  oldw <- getOption("warn")
-  options(warn = -1)
+  breaks <- c(seq(0,0.33,length=35),seq(0.34,0.66,length=33),seq(0.67,1,length=33))
   
-  heatmap = image(methvals_of_interest, Rowv = NA, Colv = NA, axes=FALSE, col=cols, main="Methylation")
+  heatmap = image(methvals_of_interest, axes=FALSE, col=cols, main="Methylation",breaks = breaks)
   axis(side = 1, at=seq(0,1,1/(nrow(methvals_of_interest)-1)), labels = rownames(methvals_of_interest), tick = FALSE, las=2)
   legend("left", c("hypo", "neutral", "hyper"), xpd = TRUE, pch=15, inset = c(-0.35,-0.25), col=c("green","black","red"),bty="n")
   
   mtext(paste(noquote(selected_gene),"Analysis",sep= " "), outer=TRUE,  cex=2, line=-2)
   
   
-  options(warn = oldw)
+
 }
 
 
@@ -274,7 +320,7 @@ plot_gene_meth  = function(selected_gene = selected_gene, expr_data = trscr_lusc
       cols = colorRampPalette(colors)(100)
     }
     
-    foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, mar=c(10,5), useRaster=TRUE,main=main ,...)
+    foo = gplots::heatmap.2(data, Rowv=Rowv, Colv=Colv, dendrogram=dendrogram, trace="none", col=cols, mar=c(10,5), useRaster=TRUE ,...)
     
     
 }
