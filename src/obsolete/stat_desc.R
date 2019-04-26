@@ -1,5 +1,5 @@
 
-features <- get_features(penda_superup_deregulated, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+features <- get_features(penda_superconserved, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
 layout(matrix(1:2,1), respect=TRUE)
 
 plot_mean_vs_sd <- function(genes_list = feat_indexed_probes,

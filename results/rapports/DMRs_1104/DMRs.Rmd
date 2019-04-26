@@ -1,0 +1,785 @@
+---
+title: "BedData Vizualisation - Regions of Interest"
+author: "Jakobi Milan"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+
+
+
+```{r eval=TRUE, echo=FALSE, label="loading databases"}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
+
+source("~/projects/supergenes/src/fun_preprocess.R")
+source("~/projects/supergenes/src/fun_regions.R")
+
+if(!exists("epic27k")){
+epic27k <- read.delim("~/projects/tcga_studies/jhu-usc.edu_LUAD.HumanMethylation27.4.lvl-3.TCGA-05-4395-01A-01D-1205-05.gdc_hg38.txt",row.names=1, stringsAsFactors=FALSE)
+}
+
+if(!exists("epic450k")){
+epic450k <- read.delim("~/projects/tcga_studies/jhu-usc.edu_LUAD.HumanMethylation450.16.lvl-3.TCGA-95-A4VK-01A-11D-A25R-05.gdc_hg38.txt",row.names=1, stringsAsFactors=FALSE)
+epic450k <- epic450k[,-1]
+colnames(epic450k) <- c("seqnames","start",colnames(epic450k)[3:9])
+}
+
+
+if (!exists("tcga_lusc_DMR")) {
+  require(readr)
+  print("Loading LUSC DMR metadata...")
+tcga_lusc_DMR <- read_delim("~/projects/supergenes/data/dataAnais/TCGA-LUSC_cancer_DMRs.tsv", ",", escape_double = FALSE, trim_ws = TRUE)
+}
+
+if (!exists("platform")){
+  require(readr)
+platform <- as.data.frame(read.table("~/projects/supergenes/data/dataAnais/hg38_genomic_features.bed"))
+colnames(platform) <- c("chromosome","start","end","genomic_feature","gene")
+}
+
+if (!exists("trscr_lusc")) {
+  print("Loading LUSC transcription data...")
+trscr_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_trscr.rds")
+}
+
+if (!exists("meth_lusc")) {
+  print("Loading LUSC methylation data...")
+meth_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_meth.rds")
+meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
+meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
+}
+
+if(!exists("penda_superup_deregulated")) {
+  print("Loading superexpressed genes list...")
+  penda_superup_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx"))
+  rownames(penda_superup_deregulated) <- penda_superup_deregulated[,1]; penda_superup_deregulated <- penda_superup_deregulated[,-1]
+  
+  for (i in 1:dim(penda_superup_deregulated)[1]){
+    if (is.element(i,c(1:3,178:dim(penda_superup_deregulated)[1])))
+      {penda_superup_deregulated[i,1] <- 1}
+    else {penda_superup_deregulated[i,1] <- 0}
+    
+    if (i <= 177)
+      {penda_superup_deregulated[i,2] <- 1}
+    else {penda_superup_deregulated[i,2] <- 0}
+    }
+  penda_superup_deregulated <- rownames(penda_superup_deregulated[penda_superup_deregulated[,2] == 1, ])
+}  
+if(!exists("penda_superdown_deregulated")){
+  print("Loading underexpressed genes list...")
+  penda_superdown_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 2))
+  rownames(penda_superdown_deregulated) <- penda_superdown_deregulated[,1];
+  penda_superdown_deregulated <- penda_superdown_deregulated[,-1]
+          
+  for (i in 1:dim(penda_superdown_deregulated)[1]){
+    if (is.element(i,c(1:123,385:dim(penda_superdown_deregulated)[1]))) 
+    {penda_superdown_deregulated[i,1] <- 1}
+    else {penda_superdown_deregulated[i,1]<- 0}
+    
+    if(i <= 384)
+    {penda_superdown_deregulated[i,2] <- 1}
+    else {penda_superdown_deregulated[i,2]<- 0}
+    
+  }
+  
+  penda_superdown_deregulated <- rownames(penda_superdown_deregulated[penda_superdown_deregulated[,2] == 1, ])
+}
+  
+  
+if(!exists("penda_superconserved")){
+  print("Loading conserved genes list...")
+  penda_superconserved = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx",sheet = 3))
+  rownames(penda_superconserved) <- penda_superconserved[,1]; penda_superconserved <- penda_superconserved[,-1]
+    
+    for (i in 1:dim(penda_superconserved)[1]){
+      if (is.element(i,c(1:33,80:dim(penda_superconserved)[1])))
+      {penda_superconserved[i,1] <- 1}
+      else {penda_superconserved[i,1] <- 0}
+      
+      if(i <= 79)
+      {penda_superconserved[i,2] <- 1}
+      else {penda_superconserved[i,2] <- 0}
+    }
+  penda_superconserved <- rownames(penda_superconserved[penda_superconserved[,2] == 1, ])
+  
+}
+
+
+
+if (!exists("epic")) {
+  print("Loading Epic metadata .")
+  epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.gencode.v22.rds")
+  # epic_orig = readRDS("~/projects/datashare/platforms/EPIC.hg38.manifest.rds")
+  epic = as.data.frame(epic_orig)
+  rownames(epic) = names(epic_orig)
+  head(epic)
+  pf_chr_colname = "seqnames"
+  pf_pos_colname = "start"
+  epic = epic[order(epic[[pf_chr_colname]], epic[[pf_pos_colname]]),]
+}
+
+hypo_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hypo"),]
+hyper_DMR <- tcga_lusc_DMR[which(tcga_lusc_DMR[,"is.hyper"]=="hyper"),]
+
+targeted_genes <- penda_superup_deregulated
+DMR_table<-as.data.frame(tcga_lusc_DMR)
+meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
+meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
+source("~/projects/supergenes/src/fun_plot_regions.R")
+```
+
+# Foreword
+
+After a first vizualisation using bins ,based on distance to TSS, to divide genes, we now do use regions of interest to partition regions along genes : exons ( noted CDS), introns, UTR'3, UTR'5, intergenes region and a region of 2kbp upstream gene TSS from all transcripts, noted P2000. We also added Differentially Methylated Regions (DMR) on our vizualisation, based on a slightly modified version of DMRcate.
+
+The databatases of DMRs and regions of interest were provided by BSC from Strasbourg. Since they are only interested on protein-coding genes for now, we had to do so to use their data.
+
+# Data presentation : Superup deregulated genes
+
+Data table used and presented in the previous vignette are still used. We are going to focus on super upmethylated genes obtained by the Penda method.
+
+We used here a `DMR_table` giving the 11279 DMRs obtained from TCGA data for all cancers, with 28 features : coordinates, wether the region is hypomethylated or hypermethylated, whether an annotated CGI is overlapping with the DMR...
+In addition, is also used a `platform` table giving regions (eg : exons) coordinates indexed by genes, for a total of 19632 features. Thus, we have for 174 of our 177 superup methylated genes, coordinates of different regions along them.
+
+# Data preprocessing
+
+## Indexing probes by regions
+
+We created a function taking as input the list of features of interest, the `platform` giving coordinates for regions, the EPIC database and a prebuilt list of probes indexed by features such as given as output from our `get_features` function. We broadened our previously used window, using an interval of -7500,+7500 bp window around the TSS.
+
+
+```{r}
+
+
+get_features_regions <- function(features_list = features, platform_regions = platform, epimed_database = epic, indexed_probes = feat_indexed_probes ){
+
+regions_name <-unique(as.character(platform[,"genomic_feature"]))
+
+  feat_indexed_probes_regions <- lapply(1:nrow(features_list), function(index){
+
+
+    gene <- names(feat_indexed_probes[index])
+    tmp_probes <- feat_indexed_probes[[gene]]
+    epic_tmp <- epic[tmp_probes,c("start","end")]
+    sub_epic <- epic_tmp[intersect(rownames(epic_tmp), rownames(meth_lusc$data)),]
+    pf_gene <- platform[which(platform[,"gene"]==gene),]
+  
+
+    pf_regions = lapply(regions_name, function(region){
+      regions<-pf_gene[which(pf_gene[,"genomic_feature"]==region),]
+      return(regions)
+    })
+
+    names(pf_regions) <- regions_name
+
+  per_regions_type_coordinates <-sapply(pf_regions, function(pf){
+    if (nrow(pf)>=1){
+      per_regions_coordinates = apply(pf,1,function(region){
+        range = c(region["start"],region["end"])
+      })
+    }
+  })
+
+  names(per_regions_type_coordinates) <- regions_name
+  
+  INTER = vector()
+  P2000 = vector()
+  UTR5 = vector()
+  INTRON = vector()
+  CDS = vector()
+  UTR3 = vector()
+
+  for (i in 1:nrow(sub_epic)){
+    
+      if (!is.null(per_regions_type_coordinates$INTER))
+        if(sum(apply(per_regions_type_coordinates$INTER,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {INTER[i]<-rownames(sub_epic[i,])}
+    
+    
+  
+      if (!is.null(per_regions_type_coordinates$P2000))
+        if(sum(apply(per_regions_type_coordinates$P2000,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {P2000[i]<-rownames(sub_epic[i,])}
+  
+    
+
+      if (!is.null(per_regions_type_coordinates$UTR5))
+        if(sum(apply(per_regions_type_coordinates$UTR5,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {UTR5[i]<-rownames(sub_epic[i,])}
+  
+    
+
+      if (!is.null(per_regions_type_coordinates$INTRON))
+        if(sum(apply(per_regions_type_coordinates$INTRON,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {INTRON[i]<-rownames(sub_epic[i,])}
+    
+    
+      if (!is.null(per_regions_type_coordinates$CDS))
+        if(sum(apply(per_regions_type_coordinates$CDS,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1) 
+      {CDS[i]<-rownames(sub_epic[i,])}
+    
+      if (!is.null(per_regions_type_coordinates$UTR3))
+        if(sum(apply(per_regions_type_coordinates$UTR3,2, function(window){
+          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+        {UTR3[i]<-rownames(sub_epic[i,])}
+  
+    }
+
+  ret <- list(sub_epic = sub_epic, INTER = INTER, P2000 = P2000, UTR5 = UTR5, CDS = CDS, INTRON = INTRON, UTR3 = UTR3)
+  return(ret)
+  
+  })
+  names(feat_indexed_probes_regions) <- rownames(features_list)
+  return(feat_indexed_probes_regions)
+
+}
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_indexed_probes_regions = get_features_regions(features_list=features)
+```
+
+The obtained output is 2 level depth list, containing for each gene, the probes names for each region of the gene, along with a `sub_epic` list giving all probes indexed for the features and their coordinates. It is notable by exploring the obtained list that probes location are very unbalanced for a given gene : for example, our FKBP4 features has 11 probes on its P2000 region, 1 on exon and 5 on introns, none for the rest.
+
+This note led us to developp a tool to vizualize, for each gene, its regions and probes distribution.
+
+## First vizualisation
+
+The following function takes as input a gene of interest, the data table of features such as given by `get_features`, our DMRs coordinates, our regions coordinates given by the `platform` database, the list containings probes indexed by features, and the window around the TSS the user wants to vizualise, which should be the same as selected in the `get_features` function.
+
+
+```{r}
+
+
+plot_selected_regions<- function(selected_gene = "ANLN",
+                                 features_list = features,
+                                 DMRtable = DMR_table,
+                                 cgi_table = cgi_coordinates,
+                                 DMR_map,
+                                 pf = platform,
+                                 epimed = epic,
+                                 chips_index = chip_index,
+                                 probes_index = feat_indexed_probes,
+                                 window=c(10000,10000)){
+  
+  ## get nearest DMR
+  DMRs_of_interest<-DMRtable[which(DMRtable[,"closest_gene_name"]==selected_gene),]
+  #DMRs_of_interest<- DMR_table[intersect(DMR_table[,"DMR_id"],names(DMR_map[[selected_gene]])),]
+  
+  
+  
+  ## get data
+  
+  
+  upstream = window[2]
+  downstream = window[1]
+  pf_gene <- pf[which(pf[,"gene"]==selected_gene),2:4]
+  tmp_probes <- feat_indexed_probes[[selected_gene]]
+  sub_epic_tmp <- epimed[tmp_probes,c("start","end")]
+  sub_epic_tmp <- sub_epic_tmp[intersect(rownames(sub_epic_tmp), rownames(meth_lusc$data)),]
+  sub_epic <- cbind(sub_epic_tmp,cgi_table[intersect(rownames(sub_epic_tmp),rownames(cgi_table)),])
+  TSS <- features_list[selected_gene,"TSS"]
+  chip_index_of_interest <- chips_index[intersect(rownames(sub_epic),rownames(chips_index)),]
+  
+  
+  ## get subset of coordinates
+  
+  introns_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTRON"),]
+  exons_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="CDS"),]
+  utr3_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="3UTR"),]
+  utr5_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="5UTR"),]
+  intergenic_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="INTER"),]
+  p2000_coordinates <- pf_gene[which(pf_gene[,"genomic_feature"]=="P2000"),]
+  
+  ## get colors
+  
+  cols<-sapply(rownames(sub_epic), function(probe){
+    
+    if(chip_index_of_interest[probe,"epic850k"] == 1)
+      {col ="gray55"}
+    
+    if(chip_index_of_interest[probe,"epic450k"] == 1)
+      {col = "darkolivegreen"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1)
+      {col = "darkorchid"}
+    
+    
+    if(chip_index_of_interest[probe,"epic850k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1)
+      {col = "darkcyan"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic850k"] == 1)
+      {col = "darkred"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1)
+      {col = "goldenrod"}
+    
+    
+    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1 & chip_index_of_interest[probe,"epic850k"] == 1)
+      {col = "black"}
+    
+    
+    
+    
+    
+
+    return(col)
+  })
+  
+  ## plot probes + TSS
+  
+  plot(sub_epic$start, rep(3,length(sub_epic$start)), pch=19, xlim=c(TSS-downstream,TSS+upstream), cex=1.2, yaxt="n",
+       main = paste0(selected_gene,": Probes repartition among regions (nprobes = ",nrow(sub_epic),")"),
+       xlab="Coordinates (in bp)",
+       ylab="",
+       ylim=c(0,5),
+       col = cols)
+  
+  legend("left", c("P2000", "Exons", "Introns","3'UTR","5'UTR","Inter","hypoDMR","hyperDMR","CGI"),
+         inset=c(-0.12,0),
+         xpd = TRUE,
+         pch=15,
+         col=c("grey","darkslategray1","firebrick","darkseagreen","orange","black","blue","red","gray1"),
+         bty="n",title = "Region")
+  
+  legend("topright",
+         c("850k","450k","27k","850-450","850-27","450-27","all"),
+         inset=c(-0.05,0),
+         xpd=TRUE,
+         pch = 19,
+         col = c("gray55","darkolivegreen","darkorchid","darkcyan","darkred","goldenrod","black"),
+         title ="Chip index")
+  
+
+  #text(sub_epic$start,rep(4,length(sub_epic$start)), labels = rownames(sub_epic) ,cex = 0.8,srt = 80) ##probes label
+  text(TSS,0.2,labels = paste0("TSS : ", TSS),cex = 0.7)
+  
+  points(TSS, 0.5, pch=9, col="red")
+  abline(h=0.5, lty=3, lwd = 1)
+  
+  
+  
+  ##plot CGIs
+  
+ for (i in 1:nrow(sub_epic)){
+    
+   rect(as.numeric(as.character(sub_epic[i,"cgi_start"])),2.7, as.numeric(as.character(sub_epic[i,"cgi_end"])),2.6,
+         col ="gray1")
+  }
+  
+  
+  
+  
+  ## plot regions
+  
+  
+  
+  if(nrow(p2000_coordinates) > 0) {
+    apply(p2000_coordinates,1, function(p2000){
+      rect(p2000[["start"]],1.5, p2000[["end"]],2.5,
+           col="grey",
+           border ="black")
+    })
+  }
+  
+  
+  
+  if (nrow(exons_coordinates)>0){
+    apply(exons_coordinates,1, function(exon){
+      rect(exon[["start"]],1.5, exon[["end"]], 2.5,
+           col="darkslategray1",
+           border="black")
+    })
+  }
+  
+  
+  if(nrow(introns_coordinates)>0){
+    apply(introns_coordinates,1, function(intron){
+      rect(intron[["start"]],1.5, intron[["end"]],2.5,
+           col="firebrick",
+           border="black")
+    })
+  }
+  
+  if(nrow(utr3_coordinates)>0){
+    apply(utr3_coordinates,1, function(utr3){
+      rect(utr3[["start"]],1.5, utr3[["end"]],2.5,
+           col="darkseagreen",
+           border="black")
+      
+    })
+  }
+  
+  
+  
+  if(nrow(utr5_coordinates)>0){
+    apply(utr5_coordinates,1, function(utr5){
+      rect(utr5[["start"]],1.5, utr5[["end"]],2.5,
+           col="orange",
+           border="black")
+    })
+  }
+  
+  
+  if(nrow(intergenic_coordinates)>0){
+    apply(intergenic_coordinates,1, function(inter){
+      rect(inter[["start"]],1.5, inter[["end"]],2.5,
+           col="black",
+           border="black")
+    })
+  }
+  
+  if(nrow(DMRs_of_interest)>0){
+    coords <- apply(DMRs_of_interest,1,function(dmr){
+      if(dmr[["is.hyper"]]=="hyper"){col="red"}
+      else{col="blue"}
+      rect(dmr[["start"]],1.1,dmr[["end"]],1.3,
+           col=col,
+           border=col)
+      coord <- as.numeric(c(dmr[["start"]],dmr[["end"]]))
+      
+    })
+    colnames(coords)<-DMRs_of_interest[["DMR_id"]]
+    coords <- apply(coords,2,mean)
+    text(coords,rep(1.2,length(coords)),names(coords),cex = 0.5)
+  }
+  
+  
+  
+  plot_coordinates <<- list(introns_coordinates = introns_coordinates,
+                            exons_coordinates = exons_coordinates,
+                            utr3_coordinates = utr3_coordinates,
+                            utr5_coordinates = utr5_coordinates,
+                            p2000_coordinates = p2000_coordinates,
+                            intergenic_coordinates = intergenic_coordinates,
+                            probes_coordinates = sub_epic,
+                            DMRs_of_interest = DMRs_of_interest)
+  
+  
+  
+  
+  
+}
+
+
+
+
+
+
+#catalog(features)
+plot_selected_regions("OTX1")
+plot_selected_regions("MCM2")
+plot_selected_regions("TROAP")
+```
+Crosses stands for probes location (850k BedChip). Red bands stands for hypermethylated DMRs and blue ones for hypomethylated DMRs.
+
+Counter-intuitively, we do not observe the canonical structure of a gene such as P2000-5'UTR-TSS-introns/exons-3'UTR. Plus, we only observe 27 genes of 174 with DMRs in a range of 10kb or less away from the TSS (both sides). There is three patterns of plots : about regular plots, with coherent structure (eg : OTX1), plots with many missings coordinates (eg : MCM2) and genes with composite structure ("TROAP") because of transcripts.
+
+About DMRs, we re-affected DMRs given by the other team, using the simple following criterium : a DMRs is considered as gene indexed if one of its extremum (its end or its start) is at least than 10kb from the gene's TSS.
+We vizualized each plot and decided to exclude the unwell structured ones for now, to obtain a proper heatmap of methylation values per type of regions. 
+
+# Vizualising methylation values among regions using heatmaps
+
+Before removing the genes with seemingly missing data, we draw a heatmap showing the average methylation both for genes and individuals ( means of means), and its variability (mean of variances). As an example, the followings plots show values for non-tumoral tissues.
+
+## Healthy tissues
+
+```{r echo=TRUE}
+regions_map <- get_binmap(map_to_reduce = feat_indexed_probes_regions, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+
+means_per_regions_per_genes_per_patient = reduce_rows(meth_normal,regions_map,mean,na.rm=T)
+means = subset_vals_per_bins(data = meth_normal, values_per_patient = means_per_regions_per_genes_per_patient, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+
+meth_heatmap(means, main= "Mean of means: 177 genes x 6 regions")
+```
+
+It is noticeable that we do not have data for both 3'UTR and 5'UTR nor intergenics regions ( even if P2000 could be considered as intergenic). Exons seems to be, in mean, more methylated than introns.
+
+
+```{r}
+vars_per_regions_per_genes_per_patient = reduce_rows(meth_normal,regions_map,var ,na.rm=T)
+
+vars = subset_vals_per_bins(data= meth_normal, values_per_patient = vars_per_regions_per_genes_per_patient, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars, main = "mean of vars: 177 genes x 6 regions")
+```
+
+Even if no specific regions has notably different variances then others, we can see that introns seems to be more variable then exons. After our first vizualisation done, we now exclude from our analysis genes which are considered as "unstructured".
+
+
+## Excluding genes with confusiong data
+
+After our first vizualisation done, we now exclude from our analysis genes which are labelled as "unstructured", to ensure that it doesn't prevaricate too much our heatmaps.
+
+
+```{r}
+###################### CHUNK TO EXPORT EVERY SINGLES PLOTS TO A LOCAL DIRECTORY ######################
+
+
+#mypath <- file.path("/home","jakobim","projects","supergenes","results","Figures","regions_superup",paste("regions", rownames(features)[i], ".jpg", sep = ""))
+
+
+
+# plots_regions <- list()
+# for (i in 1:length(rownames(features))){
+#   jpeg(file=mypath[i])
+#   plot_selected_regions(rownames(features)[i],window=c(7500,7500))
+#   plots_regions[[i]] <- recordPlot()
+# 
+#   rm(plot_coordinates)
+#   graphics.off()
+# }
+# names(plots_regions)<-rownames(features)
+#replayPlot(plots_regions$FKBP4)
+
+```
+
+we arbitrarly excluded 18 genes. We can now re-draw our heatmaps ignoring those.
+
+```{r}
+#meth_heatmap(means_nw ,main= "Mean of means: 156 genes x 6 regions")
+```
+
+
+
+```{r}
+#meth_heatmap(vars_nw, main = "mean of vars: 156 x 6 regions")
+```
+
+Since removing genes whose structure are not well captured by our available datas doesn't change the global aspect of methylation values behavior among regions, we won't exclude them for our future analysis.
+
+## Focusing interest on tumoral tissues
+
+We can repeat the supra procedure vizualising only tumoral tissues to get a specific methylation signature for LUAD cancer tissues.
+
+
+```{r}
+means_per_regions_per_genes_per_patient_tumoral = reduce_rows(meth_tumoral,regions_map,mean,na.rm=T)
+
+means_tumoral = subset_vals_per_bins(data = meth_tumoral, values_per_patient = means_per_regions_per_genes_per_patient_tumoral, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+
+meth_heatmap(means_tumoral, main= "Mean of means: 177 genes x 6 regions")
+```
+
+
+```{r}
+vars_per_regions_per_genes_per_patient_tumoral = reduce_rows(meth_tumoral,regions_map,var ,na.rm=T)
+
+vars_tumoral = subset_vals_per_bins(data= meth_tumoral, values_per_patient = vars_per_regions_per_genes_per_patient_tumoral, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars_tumoral, main = "mean of vars: 177 genes x 6 regions")
+```
+
+Both means and variances doesn't seems to change very much in itself, wich could and should be due to noise in our data. To obtain a proper idea of how strong is the LUSC cancer impact on methylation for our pre-selected genes, we are now going to use a differential analysis method.
+
+## Focusing on differential values
+
+We'll now replace tumoral values with differential values, obtained by the following simple procedure : we do, for each probes value and for each tumoral tissue, the difference between the obtained value and the mean value obtained for the same probe on healthy tissues.
+
+
+```{r}
+mean_values_normal_tissues <- apply(meth_normal,1,mean,na.rm=T)
+meth_diff <- t(sapply(1:nrow(meth_tumoral), function(i) meth_tumoral[i,] - mean_values_normal_tissues[i]))
+rownames(meth_diff)<-rownames(meth_lusc$data)
+dim(meth_diff)
+```
+
+Once done, we can repeat the procedure using differential values :
+
+
+```{r}
+means_per_regions_per_genes_per_patient_diff <- reduce_rows(meth_diff,regions_map, mean ,na.rm=T)
+
+means_diff <- subset_vals_per_bins(data = meth_diff,
+values_per_patient = means_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = mean)
+
+meth_heatmap(means_diff, main = "mean of means: 177 genes x 6 regions")
+```
+
+
+
+```{r}
+vars_per_regions_per_genes_per_patient_diff = reduce_rows(meth_diff,regions_map,var ,na.rm=T)
+
+vars_diff = subset_vals_per_bins(data= meth_diff,
+values_per_patient = vars_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars_diff, main = "mean of vars: 177 genes x 6 regions")
+```
+
+
+
+# Using superdown genes instead of superup genes
+
+We are now repeting previous steps using underexpressed genes, meaning that they were significantly differentially expressed among tumoral tissues compared to healthy ones.
+
+```{r include=FALSE}
+targeted_genes <- penda_superdown_deregulated
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_indexed_probes_regions = get_features_regions(features_list=features)
+regions_map <- get_binmap(map_to_reduce = feat_indexed_probes_regions, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+```
+
+## Healthy tissues
+
+```{r}
+means_per_regions_per_genes_per_patient = reduce_rows(meth_normal,regions_map,mean,na.rm=T)
+
+means = subset_vals_per_bins(data = meth_normal, values_per_patient = means_per_regions_per_genes_per_patient, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+
+meth_heatmap(means, main= "Mean of means for 377 genes (healthy-down)")
+```
+
+```{r}
+vars_per_regions_per_genes_per_patient = reduce_rows(meth_normal,regions_map,var,na.rm=T)
+
+vars = subset_vals_per_bins(data = meth_normal, values_per_patient = vars_per_regions_per_genes_per_patient, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"),fun = var)
+
+meth_heatmap(vars, main= "Mean of vars for 377 genes (healthy-down)")
+```
+
+
+
+## Tumoral tissues
+
+
+```{r}
+means_per_regions_per_genes_per_patient_tumoral = reduce_rows(meth_tumoral,regions_map,mean,na.rm=T)
+
+means_tumoral = subset_vals_per_bins(data = meth_tumoral, values_per_patient = means_per_regions_per_genes_per_patient_tumoral, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+
+meth_heatmap(means_tumoral, main= "Mean of means for 377 genes (tumoral-down")
+```
+
+
+
+
+```{r}
+vars_per_regions_per_genes_per_patient_tumoral = reduce_rows(meth_tumoral,regions_map,var ,na.rm=T)
+
+vars_tumoral = subset_vals_per_bins(data= meth_tumoral, values_per_patient = vars_per_regions_per_genes_per_patient_tumoral, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars_tumoral, main = "mean of vars for 377 (tumoral-down)")
+```
+
+
+
+## Differential analysis
+
+```{r}
+means_per_regions_per_genes_per_patient_diff <- reduce_rows(meth_diff,regions_map, mean ,na.rm=T)
+
+means_diff <- subset_vals_per_bins(data = meth_diff,
+values_per_patient = means_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = mean)
+
+meth_heatmap(means_diff, main = "means: 377 genes (differential-down)")
+```
+
+
+
+```{r}
+vars_per_regions_per_genes_per_patient_diff = reduce_rows(meth_diff,regions_map,var ,na.rm=T)
+
+vars_diff = subset_vals_per_bins(data= meth_diff,
+values_per_patient = vars_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars_diff, main = "vars 377 genes (differential-down)")
+```
+
+
+
+# Superconserved Genes
+
+Superconserved genes are genes who keep statistically a more stable expression than others genes between healthy and tumoral tissues.
+
+## Healthy tissues
+
+```{r include=FALSE}
+targeted_genes <- penda_superconserved
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_indexed_probes_regions = get_features_regions(features_list=features)
+regions_map <- get_binmap(map_to_reduce = feat_indexed_probes_regions, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+```
+
+
+```{r}
+means_per_regions_per_genes_per_patient = reduce_rows(meth_normal,regions_map,mean,na.rm=T)
+
+means = subset_vals_per_bins(data = meth_normal, values_per_patient = means_per_regions_per_genes_per_patient, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+
+meth_heatmap(means, main= "Means for 74 genes (healthy-conserved)")
+```
+
+
+```{r}
+vars_per_regions_per_genes_per_patient = reduce_rows(meth_normal,regions_map,var ,na.rm=T)
+
+vars = subset_vals_per_bins(data= meth_normal, values_per_patient = vars_per_regions_per_genes_per_patient, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars, main = "Vars for 74 genes (healthy-conserved)")
+```
+
+## Tumoral tissues
+
+```{r}
+means_per_regions_per_genes_per_patient_tumoral = reduce_rows(meth_tumoral,regions_map,mean,na.rm=T)
+
+means_tumoral = subset_vals_per_bins(data = meth_tumoral, values_per_patient = means_per_regions_per_genes_per_patient_tumoral, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"))
+
+meth_heatmap(means_tumoral, main= "Means for 74 genes tumoral-conserved)")
+```
+
+```{r}
+vars_per_regions_per_genes_per_patient_tumoral = reduce_rows(meth_tumoral,regions_map,var ,na.rm=T)
+
+vars_tumoral = subset_vals_per_bins(data= meth_tumoral, values_per_patient = vars_per_regions_per_genes_per_patient_tumoral, c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars_tumoral, main = "Vars for 74 genes (tumoral-conserved)")
+```
+
+## Differential analysis
+
+```{r}
+means_per_regions_per_genes_per_patient_diff <- reduce_rows(meth_diff,regions_map, mean ,na.rm=T)
+
+means_diff <- subset_vals_per_bins(data = meth_diff,
+values_per_patient = means_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = mean)
+
+meth_heatmap(means_diff, main = "Means for 74 genes (diff-conserved)")
+```
+
+
+
+
+```{r}
+vars_per_regions_per_genes_per_patient_diff = reduce_rows(meth_diff,regions_map,var ,na.rm=T)
+
+vars_diff = subset_vals_per_bins(data= meth_diff,
+values_per_patient = vars_per_regions_per_genes_per_patient_diff,
+c("INTER","P2000","UTR5","CDS","INTRON","UTR3"), fun = var)
+
+meth_heatmap(vars_diff, main = "Vars for 74 genes (diff-conserved)")
+```
+
+
+
+
+
+
+
