@@ -48,9 +48,14 @@ if (!exists("meth_lusc")) {
   meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
 }
 if (!exists("meth_tumoral")){
+  print("Spliting methylation data (Tumoral, healthy, differential...")
   meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
   meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
+  mean_values_normal_tissues <- apply(meth_normal,1,mean,na.rm=T)
+  meth_diff <- t(sapply(1:nrow(meth_tumoral), function(i) meth_tumoral[i,] - mean_values_normal_tissues[i]))
+  rownames(meth_diff)<-rownames(meth_lusc$data)
 }
+
 if(!exists("penda_superup_deregulated")) {
   print("Loading superexpressed genes list...")
   penda_superup_deregulated = as.data.frame(readxl::read_excel("~/projects/supergenes/data/tables_penda.xlsx"))
@@ -125,8 +130,7 @@ if (!exists("epic")) {
 meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
 meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
 
-
+source("~/projects/supergenes/src/fun_preprocess.R")
 source("~/projects/supergenes/src/fun_plots.R")
 source("~/projects/supergenes/src/fun_calculus.R")
-source("~/projects/supergenes/src/fun_preprocess.R")
 gc()

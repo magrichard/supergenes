@@ -277,7 +277,10 @@ get_features_regions <- function(features_list = features,
 
 ################ Index DMR per features##################
 
-get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, regions_coordinates = platform, treshold = 100000){
+get_feat_indexed_DMRs <- function(DMRtable = DMR_table,
+                                  features_list = features,
+                                  regions_coordinates = platform,
+                                  treshold = 100000){
   
   DMRtable<- DMRtable[order(DMRtable[,"DMR_id"]),]
   
@@ -301,7 +304,7 @@ get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, reg
     DMR_in_range <- lapply(1:nrow(DMRs_of_interest),function(index){
       DMR <- DMRs_of_interest[index,]
       
-       if(nrow(DMRs_of_interest) > 0){
+      if(nrow(DMRs_of_interest) > 0){
         if(as.numeric(DMR[["start"]]) > features_list[gene,"TSS"]){
           foo <- abs(as.numeric(DMR[["start"]])-features_list[gene,"TSS"])
           return(foo)
@@ -311,8 +314,8 @@ get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, reg
           foo <- abs(features_list[gene,"TSS"]-as.numeric(DMR[["end"]]))
           return(foo)
         }
-       }
-       
+      }
+      
     })
     if (nrow(DMRs_of_interest) > 0){
       names(DMR_in_range)<-DMRs_of_interest[["DMR_id"]]
@@ -320,8 +323,8 @@ get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, reg
     }
     else{DMR_candidates<- NULL}
     
-      return(DMR_candidates)
-      
+    return(DMR_candidates)
+    
   })
   
   names(feat_indexed_DMRs)<- rownames(features_list)
@@ -332,6 +335,14 @@ get_indexed_DMRs <- function(DMRtable = DMR_table, features_list = features, reg
   gc()
 }
 
+######################## get_meth_diff ##############
+get_differential_values <- function(meth_tumoral,meth_healthy){
+  
+  mean_values_normal_tissues <- apply(meth_healthy,1,mean,na.rm=T)
+  meth_diff <- t(sapply(1:nrow(meth_tumoral), function(i) meth_tumoral[i,] - mean_values_normal_tissues[i]))
+  rownames(meth_diff)<-rownames(meth_tumoral)
+  return(meth_diff)
+}
 
 
 
@@ -395,7 +406,10 @@ subset_vals_per_bins<-function(data = meth_lusc$data,
                                values_per_patient = means_per_regions_per_genes_per_patient,
                                binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"),
                                fun = mean,
-                               names = feat_indexed_probes, ...){
+                               probes_index = feat_indexed_probes, ...){
+  
+  names<-names(which(unlist(lapply(probes_index,is.null))==FALSE))
+  
   
   values_per_bins <- apply(values_per_patient,1,mean,na.rm=T,...) 
   ret <- list()
@@ -413,13 +427,12 @@ subset_vals_per_bins<-function(data = meth_lusc$data,
   
   
   vals_per_genes <- do.call(cbind,vals)
-  rownames(vals_per_genes)<-names(names)
+  rownames(vals_per_genes)<-names
   foo <- intersect(names(overall),rownames(vals_per_genes))
   vals_per_genes <- cbind(vals_per_genes,overall[foo])
   colnames(vals_per_genes) <-c(binlist,"overall")
   if(!is.null(foo)){
   rownames(vals_per_genes) <- foo}
-  vals_per_genes = vals_per_genes[order(vals_per_genes[,which(colnames(vals_per_genes)=="overall")]),]
   
   
   return(vals_per_genes)
@@ -510,7 +523,7 @@ process_meth_data<-function(cnv_processed_data = cnv_processed,
   
   meth_processed <- do.call(rbind,methvals_per_genes) 
   colnames(meth_processed)<- colnames(targeted_cnv)
-  
+  meth_processed[unique(rownames(meth_processed)),]
   return(meth_processed)
   
   gc()
@@ -519,7 +532,6 @@ process_meth_data<-function(cnv_processed_data = cnv_processed,
 
 
 ##################### get probes indexed by bins and by regions ############
-
 
 
 
@@ -603,7 +615,7 @@ get_indexed_binreg<-function(features_list = features,
   
   
   
-  regions_name <-unique(as.character(platform_regions[,"genomic_feature"]))[unique(as.character(platform_regions[,"genomic_feature"]))!= "P2000"]
+  regions_name <- c("INTER","CDS","INTRON", "UTR5","UTR3")
   
   regions <- epimedtools::monitored_apply(t(t(rownames(features_list))),mod=20,1, function(gene){
     print(noquote(paste0("Indexing probes per regions for ",gene,"...")))
@@ -633,15 +645,8 @@ get_indexed_binreg<-function(features_list = features,
     
     names(pf_regions) <- regions_name
     
-    per_regions_type_coordinates <-sapply(pf_regions, function(pf){
-      if (nrow(pf)>=1){
-        per_regions_coordinates = apply(pf,1,function(region){
-          range = c(region["start"],region["end"])
-        })
-      }
-    })
     
-    names(per_regions_type_coordinates) <- regions_name
+    
     
     INTER = vector()
     P2000 = vector()
@@ -652,34 +657,34 @@ get_indexed_binreg<-function(features_list = features,
     
     for (i in 1:nrow(sub_epic)){
       
-      if (!is.null(per_regions_type_coordinates$INTER))
-        if(sum(apply(per_regions_type_coordinates$INTER,2, function(window){
-          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+      if (nrow(pf_regions$INTER)>0)
+        if(sum(apply(pf_regions$INTER,1, function(window){
+          sub_epic[i,"start"] > as.numeric(window[["start"]]) & sub_epic[i,"end"] < as.numeric(window[["end"]]) }),na.rm=T)>=1)
         {INTER[i]<-rownames(sub_epic[i,])}
       
       
       
-      if (!is.null(per_regions_type_coordinates$UTR5))
-        if(sum(apply(per_regions_type_coordinates$UTR5,2, function(window){
-          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+      if (nrow(pf_regions$UTR5)>0)
+        if(sum(apply(pf_regions$UTR5,1, function(window){
+          sub_epic[i,"start"] > as.numeric(window[["start"]]) & sub_epic[i,"end"] < as.numeric(window[["end"]]) }),na.rm=T)>=1)
         {UTR5[i]<-rownames(sub_epic[i,])}
       
       
       
-      if (!is.null(per_regions_type_coordinates$INTRON))
-        if(sum(apply(per_regions_type_coordinates$INTRON,2, function(window){
-          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+      if (nrow(pf_regions$INTRON)>0)
+        if(sum(apply(pf_regions$INTRON,1, function(window){
+          sub_epic[i,"start"] > as.numeric(window[["start"]]) & sub_epic[i,"end"] < as.numeric(window[["end"]]) }),na.rm=T)>=1)
         {INTRON[i]<-rownames(sub_epic[i,])}
       
       
-      if (!is.null(per_regions_type_coordinates$CDS))
-        if(sum(apply(per_regions_type_coordinates$CDS,2, function(window){
-          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1) 
+      if (nrow(pf_regions$CDS)>0)
+        if(sum(apply(pf_regions$CDS,1, function(window){
+          sub_epic[i,"start"] > as.numeric(window[["start"]]) & sub_epic[i,"end"] < as.numeric(window[["end"]]) }),na.rm=T)>=1) 
         {CDS[i]<-rownames(sub_epic[i,])}
       
-      if (!is.null(per_regions_type_coordinates$UTR3))
-        if(sum(apply(per_regions_type_coordinates$UTR3,2, function(window){
-          sub_epic[i,"start"] > window["start"] & sub_epic[i,"end"] < window["end"] }),na.rm=T)>=1)
+      if (nrow(pf_regions$UTR3)>0)
+        if(sum(apply(pf_regions$UTR3,1, function(window){
+          sub_epic[i,"start"] > as.numeric(window[["start"]]) & sub_epic[i,"end"] < as.numeric(window[["end"]]) }),na.rm=T)>=1)
         {UTR3[i]<-rownames(sub_epic[i,])}
       
       INTER <- INTER[!is.na(INTER)]
@@ -709,3 +714,117 @@ get_indexed_binreg<-function(features_list = features,
   
 }
 
+
+################# Get probes indexed by cgi features ###################
+
+get_indexed_cgi <- function(window = c(100000,100000),
+                            features_list = features,
+                            cgi_platform = cgi_pf,
+                            meth_data = meth_lusc$data,
+                            meth_platform = meth_lusc$platform,
+                            genes_platform = trscr_lusc$platform){
+  
+  
+  cgi_indexed_probes<- epimedtools::monitored_apply(t(t(rownames(features_list))),mod = 20,1,function(gene){
+    print(noquote(paste0("Indexing probes for gene ",gene," ...")))
+    
+    chr<-genes_platform[gene,1]
+    TSS <- features_list[gene,"TSS"]
+    
+    meth_platform_chr<- meth_platform[rownames(meth_platform)[meth_platform[[1]] %in% chr],]
+    tmp_probes <- dmprocr::get_probe_names(features_list[gene,], meth_platform_chr, "Chromosome", "Start", window[1], window[2])
+    
+    ## get probe for gene
+    
+    sub_platform <- meth_platform_chr[tmp_probes, c("Chromosome","Start","Feature_Type")]
+    
+    
+    
+    for (i in which(sub_platform[,3]==".")){
+      if(sub_platform[i,"Start"] > TSS){sub_platform[i,"Feature_Type"] <- "upper_opensea"}
+      if(sub_platform[i,"Start"] < TSS){sub_platform[i,"Feature_Type"] <- "lower_opensea"}  
+      ### encode "." as opensea
+    }
+    features_type_names <- unique(sub_platform[,"Feature_Type"])
+    
+    foo<-apply(t(t(features_type_names)),1,function(type){
+      
+      
+      tmp_type<-assign(paste0(type),rownames(sub_platform[which(sub_platform[,"Feature_Type"]==type),]))
+      if(!is.list(tmp_type)){assign(paste0(type),list(tmp_type))}
+      else{assign(paste0(type),tmp_type)}
+      ## create a list of probes for each level of "Feature_Type" + very very very smart trick to deal with 1 length list becoming
+      ## character
+      
+
+      
+    })
+    
+    for (i in 1:length(foo)){
+      if(is.list(foo[[i]])){foo[i]<-foo[[i]]}
+    }
+      
+      
+      
+    
+    names(foo)<- features_type_names
+    
+    
+    
+    
+    
+    ret = list(sub_epic = sub_platform,
+               lower_opensea = foo$lower_opensea,
+               S_shore = foo$S_Shore,
+               S_shelf = foo$S_Shelf,
+               Island = foo$Island,
+               N_shelf = foo$N_Shelf,
+               N_shore = foo$N_Shore,
+               upper_opensea = foo$upper_opensea)
+    
+    return(ret)
+    
+    
+  })
+  
+  names(cgi_indexed_probes)<- rownames(features_list)
+  return(cgi_indexed_probes)
+  
+}
+
+############# Index probes per DMR #################
+
+get_dmrs_indexed_probes <-function(DMRtable = DMR_table,
+                                   meth_platform = meth_lusc$platform){
+  
+  
+  
+  
+  chrs <- unique(DMRtable[, 1])
+  chrs_indexed_probes<- lapply(chrs, function(chr) {
+    print(paste0("Indexing probes per chromosome :", as.character(chr),"..."))
+    idx <- rownames(meth_platform)[meth_platform[[1]] %in% chr]
+    ret <- meth_platform[idx, ]
+    return(ret)
+  })
+  names(chrs_indexed_probes) <- chrs
+  
+  
+  print("Indexing probes per DMRs...")
+  probes_per_dmr<-epimedtools::monitored_apply(t(t(rownames(DMRtable))),mod=500,1, function(i){
+    
+    DMR<-DMRtable[i,]
+    probes_on_chr<- chrs_indexed_probes[[DMR[["chr"]]]]
+    
+    
+    selected_probes <- rownames(probes_on_chr[which(probes_on_chr[,2] >= DMR[["start"]] & probes_on_chr[,3] <= DMR[["end"]]),
+                                              ])
+    return(selected_probes)
+    
+  })
+  
+  names(probes_per_dmr)<- rownames(DMRtable)
+  
+  return(probes_per_dmr)
+  
+}

@@ -1,4 +1,6 @@
 ############## Tumoral ################
+targeted_genes <- penda_superdown_deregulated
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
 feat_ind <- get_indexed_binreg()
 map_binreg<-reduce_map(feat_ind,c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
 
@@ -54,13 +56,6 @@ rsds_h <- subset_vals_per_bins(data = meth_normal,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
 meth_heatmap(rsds_h, main = "mean of rsd healthy")
-
-
-
-
-
-
-
 
 
 
