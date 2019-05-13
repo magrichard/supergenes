@@ -1,6 +1,7 @@
 
 
 if(!exists("chip_index")){
+  print("Loading chip index...")
   chip_index <- read.csv("~/projects/supergenes/results/tables/probes_chip_index", header=TRUE, row.names=1)
 }
 
@@ -18,12 +19,14 @@ if (!exists("cnv_lusc")) {
   cnv_lusc = readRDS("~/projects/tcga_studies/study_TCGA-LUSC_cnv.rds")
 }
 
-if (!exists("platform")){
+if (!exists("bioreg_platform")){
+  print("Loading biological regions platform...")
   require(readr)
-  platform <- read.csv("~/projects/supergenes/results/tables/biological_regions.csv", row.names=1)
+  bioreg_platform <- read.csv("~/projects/supergenes/results/tables/biological_regions.csv", row.names=1)
 }
 
 if (!exists("cgi_pf")){
+  print("Loading CGI platform...")
   require(readr)
   cgi_pf <- read.csv("~/projects/supergenes/results/tables/cgi_pf.csv", row.names=1)
 }
@@ -126,11 +129,15 @@ if (!exists("epic")) {
   rm(epic_orig)
 }
 
-
+meth_lusc$platform[which(meth_lusc$platform[,"Feature_Type"] == "."),"Feature_Type"] <- "opensea"
 meth_tumoral <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="tumoral"),])]
 meth_normal <- meth_lusc$data[,rownames(meth_lusc$exp_grp[which(meth_lusc$exp_grp[,"tissue_status"]=="normal"),])]
 
 source("~/projects/supergenes/src/fun_preprocess.R")
 source("~/projects/supergenes/src/fun_plots.R")
 source("~/projects/supergenes/src/fun_calculus.R")
+
+if(!exists("meth_diff")){
+meth_diff <- get_differential_values(meth_tumoral,meth_normal)
+}
 gc()

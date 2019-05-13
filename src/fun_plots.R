@@ -25,7 +25,7 @@ plot_mean_vs_sd <- function(genes_list = feat_indexed_probes,
   
   plot(stats[,"means"],stats[,"sd"],
        xlab = paste0("mean per probe \n (nprobes = ",nrow(stats)," + ",nrow(meth)-nrow(stats)," NAs )"),
-       ylab="sd per probe",...)
+       ylab="sd per probe")
   
   return(stats)
 }
@@ -344,14 +344,27 @@ plot_selected_regions<- function(selected_gene = "ANLN",
 
   #################heatmap######################
   
-  meth_heatmap <-function(data = means, dendrogram = "none", Rowv = NULL, Colv = NULL,cols = NULL, ...){
+  meth_heatmap <-function(data = means,
+                          dendrogram = "none",
+                          Rowv = NULL,
+                          Colv = NULL,
+                          cols = NULL,
+                          order_index = NULL,
+                          ...){
     
     if(!exists("main")){
       main = deparse(substitute(data))
     }
     
     main=deparse(substitute(data))
+    
+    if(is.element("overall",colnames(data))){
     data = data[,-which(colnames(data)=="overall")]
+    }
+    
+    if(!is.null(order_index)){
+      
+      data = data[order_index,]}
     
     if(is.null(cols)){
       colors=c("cyan", "black", "red")
@@ -370,118 +383,8 @@ plot_selected_regions<- function(selected_gene = "ANLN",
     
     
 }
-  
-############## plot gene expr along with its associated DMRs methylation ############
-  
-  
-  
-  plot_gene_dmr<- function(selected_gene = "OTX1",
-                           expr_data = trscr_lusc$data,
-                           meth_study = meth_lusc,
-                           dmrs_table = DMR_table,
-                           DMR_map  = DMRs100k,
-                           fun = mean){
-    
-    
-    
-    tmp_DMR <- dmrs_table[names(DMR_map[[selected_gene]]),c("chr","start","end","is.hyper")]
-    DMRs_of_interest<- tmp_DMR[order(tmp_DMR[,"start"]),]
-    
-    if(nrow(DMRs_of_interest) == 0) {stop(paste0("There is no DMRs indexed for ",selected_gene,". Check your DMR_map object"))}
-    
-    probes_on_chr <- epic[which(as.character(epic[,1]) == DMRs_of_interest[["chr"]][1]),]
-    
-    
-    expr_values <- sort(expr_data[selected_gene,intersect(colnames(expr_data),colnames(meth_study$data))])
-    meth_values <- meth_study$data[,intersect(colnames(expr_data),colnames(meth_study$data))]
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    tmp_DMR <- dmrs_table[names(DMR_map[[selected_gene]]),c("chr","start","end","is.hyper")]
-    DMRs_of_interest<- tmp_DMR[order(tmp_DMR[,"start"]),]
-    probes_on_chr <- epic[which(as.character(epic[,1]) == DMRs_of_interest[["chr"]][1]),]
-    
-    print("Indexing methylation values per DMR...")
-    vals_per_dmr<-epimedtools::monitored_apply(t(t(rownames(DMRs_of_interest))),1, function(i){
-      
-      DMR<-DMRs_of_interest[i,]   
-      
-      
-      selected_probes <- probes_on_chr[which(probes_on_chr[,"start"] >= DMR[["start"]] & probes_on_chr[,"end"] <= DMR[["end"]]),]
-      selected_meth_values <- meth_values[intersect(rownames(selected_probes),rownames(meth_values)),]
-      
-      
-      if(class(selected_meth_values) != "numeric"){
-        DMR_vals <- apply(selected_meth_values,2,fun,na.rm=T)}         #### Check if there is more than 2 selected probes
-      
-      else{DMR_vals <- rep(NA,length(selected_meth_values))}
-      
-      
-      
-      
-      #### Else, returning raw values if the function is mean, else return a vector of NAs
-      
-      
-      return(DMR_vals)
-      
-      
-    })
-    
-    rownames(vals_per_dmr)<- colnames(meth_values)
-    sorted_vals = vals_per_dmr[order(match(rownames(vals_per_dmr),names(expr_values))),]
-    colnames(sorted_vals)<- rownames(DMRs_of_interest)
-    
-    
-    cols1 <- epimedtools::monitored_apply(t(t(names(expr_values))),1, function(i){
-      if(meth_study$exp_grp[i,14] == "tumoral"){col<- "red"}
-      else {col<- "blue"}})
-    
-    print("Plotting...")
-    
-    layout(matrix(1:2,1), respect=TRUE)
-    
-    
-    tmp = cbind(expr_values,1:length(expr_values))
-    expression_plot = plot(tmp,
-                           ylab = paste("Patient index ( ordered by level of expression)"),
-                           xlab = paste("Expression level"),
-                           main = "Expression/Transcription",
-                           col = cols1,
-                           xlim=c(0,20))
-    legend("topleft",
-           c("tumoral","normal"),
-           xpd = TRUE,
-           pch=20,
-           col=c("red","blue"))
-    
-    
-    colors=c("cyan", "black", "red")
-    cols = colorRampPalette(colors)(100)
-    breaks <- c(seq(0,0.33,length=35),seq(0.34,0.66,length=33),seq(0.67,1,length=33))
-    
-    image(t(sorted_vals),
-          col=cols,
-          breaks = breaks,
-          axes=FALSE,
-          main = paste0("# of DMRs : ",ncol(vals_per_dmr)))
-    
-    mtext(paste(noquote(selected_gene),"DMRs vizualisation",sep= " "), outer=TRUE,  cex=2, line=-2)
-    
-    
-    return(sorted_vals)
-    
-    
-    
-}
-  
-  #table(unlist(lapply(DMRs100k, length)))  
-  
+
+
 ######## Plot bin & regions ###############
   
   
@@ -494,7 +397,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
                          DMRtable = DMR_table,
                          cgi_table = cgi_coordinates,
                          DMR_map,
-                         pf = platform,
+                         platform = bioreg_platform,
                          epimed = epic,
                          chips_index = chip_index,
                          probes_index = feat_indexed_probes,
@@ -513,7 +416,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
     upstream = window[2]
     downstream = window[1]
     
-    pf_gene <- pf[which(pf[,"gene"]==selected_gene),2:4]
+    pf_gene <- platform[which(platform[,"gene"]==selected_gene),2:4]
     tmp_probes <- feat_indexed_probes[[selected_gene]]
     sub_epic_tmp <- epimed[tmp_probes,c("start","end")]
     sub_epic_tmp <- sub_epic_tmp[intersect(rownames(sub_epic_tmp), rownames(meth_lusc$data)),]
@@ -722,7 +625,7 @@ plot_selected_regions<- function(selected_gene = "ANLN",
   
 boxplot_res <- function(values_h = means_h,
                         values_t = means_t,
-                        main_h = "healty tissues",
+                        main_h = "healthy tissues",
                         main_t="tumoral tissues",
                         levels = TRUE){
     
@@ -773,15 +676,18 @@ plot_mean_vs_sd <- function(genes_list = feat_indexed_probes,
 }
   
 
+############ plot Gene indexed cgi ##############
+
 plot_gene_cgi <- function(selected_gene = "OTX1",
-                           window = c(100000,100000),
-                           meth_platform = meth_lusc$platform,
-                           meth_data = meth_lusc$data,
-                           cgi_platform = cgi_pf,
-                           probes_chip_index = chip_index,
-                           features_list = features){
+                          meth_study = meth_lusc,
+                          expr_data = trscr_lusc$data,
+                          window = c(100000,100000),
+                          cgi_platform = cgi_pf,
+                          cgi_map = cgi_indexed_probes,
+                          features_list = features){
   
-  
+  meth_platform <- meth_study$platform
+  meth_data <- meth_study$data
   
   TSS <- features_list[selected_gene,"TSS"]
   
@@ -789,97 +695,111 @@ plot_gene_cgi <- function(selected_gene = "OTX1",
   ## get closest cgi + cgi in range
   
   cgi_chr <- cgi_platform[which(as.character(cgi_platform[,"chr"]) == features_list[selected_gene,1]),]
-  tmp <- cgi_chr[which(abs(cgi_chr[,"center"]-TSS) < mean(window)+5000),]
-  cgi_of_interest<- cbind(tmp,abs(tmp[,"center"]-TSS))
-  colnames(cgi_of_interest)<-c(colnames(tmp),"dist to TSS")
-  closest_cgi <-cgi_chr[which(abs(cgi_chr[,"center"]-TSS)==min(abs(cgi_chr[,"center"]-TSS),na.rm=T)),]
   
-  ## get probes
+  tmp_cgi_of_interest <- cgi_chr[which(abs(cgi_chr[,"center"]-TSS) < mean(window)+5000),]
+  cgi_of_interest<- cbind(tmp_cgi_of_interest,abs(tmp_cgi_of_interest[,"center"]-TSS))
+  colnames(cgi_of_interest)<-c(colnames(tmp_cgi_of_interest),"dist to TSS")
   
-  tmp_probes <- dmprocr::get_probe_names(features_list[selected_gene,], meth_platform, "Chromosome", "Start", up_str=100000, dwn_str=100000)
-  sub_epic <- meth_platform[tmp_probes, 2:3]
+  
+  closest_cgi <-cgi_of_interest[which(abs(cgi_of_interest[,"center"]-TSS)==min(abs(cgi_of_interest[,"center"]-TSS),na.rm=T)),]
+  
+  ## get probes, ordered by physical coordinates
+  
+  tmp_probes <- unlist(cgi_map[[rownames(closest_cgi)]],use.names = FALSE)
+  tmp_sub_epic <- meth_platform[tmp_probes, c(2,3,9)]
+  sub_epic<- tmp_sub_epic[order(tmp_sub_epic[,"Start"]),]
+  probes <- rownames(sub_epic)
+  
   
   ## cols of probes dots
   
-  chip_index_of_interest <- probes_chip_index[intersect(rownames(sub_epic),rownames(probes_chip_index)),]
-  
   cols<-sapply(rownames(sub_epic), function(probe){
     
-    if(chip_index_of_interest[probe,"epic850k"] == 1)
-    {col ="gray55"}
-    
-    if(chip_index_of_interest[probe,"epic450k"] == 1)
-    {col = "darkolivegreen"}
+    if(sub_epic[probe,"Feature_Type"] == "Island")
+    {col = "cornflowerblue"}
     
     
-    if(chip_index_of_interest[probe,"epic27k"] == 1)
-    {col = "darkorchid"}
+    if(sub_epic[probe,"Feature_Type"] == "S_Shore")
+    {col = "chartreuse4"}
     
     
-    if(chip_index_of_interest[probe,"epic850k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1)
-    {col = "darkcyan"}
+    if(sub_epic[probe,"Feature_Type"] == "S_Shelf")
+    {col="gold"}
     
     
-    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic850k"] == 1)
-    {col = "darkred"}
+    if(sub_epic[probe,"Feature_Type"] == "N_Shore")
+    {col = "chocolate"}
     
     
-    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1)
-    {col = "goldenrod"}
+    if(sub_epic[probe,"Feature_Type"] == "N_Shelf")
+    {col = "deeppink"}
     
-    
-    if(chip_index_of_interest[probe,"epic27k"] == 1 & chip_index_of_interest[probe,"epic450k"] == 1 & chip_index_of_interest[probe,"epic850k"] == 1)
-    {col = "black"}
+    if(sub_epic[probe,"Feature_Type"] == "opensea")
+    {col= "black"}
     
     
     return(col)
   })
   
-  layout(matrix(1:2,1), respect=TRUE)
+  layout(matrix(c(4,2,
+                  1,3), 2, 2, byrow = TRUE))
   
-  plot(sub_epic$Start, rep(1,length(sub_epic$Start)), pch=19, xlim=c(closest_cgi[["center"]]-window[1],closest_cgi[["center"]]+window[2]), cex=1.1, yaxt="n",
-       main = paste0("nprobes = ",nrow(sub_epic),", ncgi = ",nrow(cgi_of_interest)),
+  ## sorted expr values (pannel 1)
+  
+  expr_values <- sort(expr_data[selected_gene,intersect(colnames(expr_data),colnames(meth_study$data))])
+  
+  cols1 <- epimedtools::monitored_apply(t(t(names(expr_values))),1, function(i){
+      if(meth_study$exp_grp[i,14] == "tumoral"){col<- "red"}
+      else {col<- "blue"}
+    })
+  
+  tmp = cbind(expr_values,1:length(expr_values))
+  expression_plot = plot(tmp,
+                         ylab = paste("Patient index ( ordered by level of expression)"),
+                         xlab = paste("Expression level"),
+                         main = "Expression/Transcription",
+                         col = cols1,
+                         xlim=c(0,20))
+  
+  
+  
+  ## probes location ( pannel 2)
+  
+  plot(sub_epic$Start, rep(1,length(sub_epic$Start)),
+       pch=19,
+       xlim=c(min(sub_epic$Start)-50,
+              max(sub_epic$End)+50),
+       cex=1.1,
+       yaxt="n",
+       main = paste0("nprobes = ",nrow(sub_epic)),
        xlab="Coordinates (in bp)",
        ylab="",
        ylim=c(0,2),
        col = cols)
   
-  
   text(TSS,0.4,labels = paste0("TSS : ", TSS),cex = 0.7)
   points(TSS, 0.5, pch=9, col="red")
   abline(h=0.5,lty=3)
   
-  if(nrow(cgi_of_interest)>0){
-    apply(t(t(rownames(cgi_of_interest))),1,function(cgi){
-      
-      rect(cgi_of_interest[cgi,"start"],1.4,cgi_of_interest[cgi,"end"],1.2,
-           col = "red",
-           border="black")
-      
-    })
+  
+  
+  
+  if(features[selected_gene,"strand"]== "-"){
+    arrows(max(sub_epic$End)-50,1.5,min(sub_epic$Start)+50,1.5)
   }
   
-  ## Indexing probes per cgi
+  if(features[selected_gene,"strand"] == "+"){
+    arrows(min(sub_epic$Start)+50,1.5,max(sub_epic$End)-50,1.5)
+  }
   
-  tmp_cgi_index <- apply(t(t(rownames(sub_epic))),1, function(probe){
-    foo <-apply(t(t(rownames(cgi_of_interest))),1,function(cgi){
-      
-      if(sub_epic[probe,"Start"] < cgi_of_interest[cgi,"end"] & sub_epic[probe,"Start"] >= cgi_of_interest[cgi,"start"]){
-        rownames(cgi_of_interest[cgi,])}
-    })
-    
-    index<-unlist(foo)
-    if(!is.null(index)){
-      names(index)<- probe
-    }
-    return(index)
-  })
   
-  cgi_index <- sort(unlist(tmp_cgi_index))
   
-  methvals_of_interest <- meth_data[intersect(rownames(meth_data),names(cgi_index)),]
-  methvals_of_interest<- methvals_of_interest[names(cgi_index),]
   
+  ## get values for heatmaps ( pannel 3)
+  
+  
+  methvals_of_interest <- meth_data[probes,intersect(colnames(meth_data),names(expr_values))]
+  sorted_vals = methvals_of_interest[,order(match(colnames(methvals_of_interest),names(expr_values)))]
   
   colors=c("cyan", "black", "red")
   cols = colorRampPalette(colors)(100)
@@ -888,17 +808,261 @@ plot_gene_cgi <- function(selected_gene = "OTX1",
               seq(0.34,0.66,length=33),
               seq(0.67,1,length=33))
   
-  image(methvals_of_interest,
+  image(sorted_vals,
         axes=FALSE,
         col=cols,
-        main=paste0("nprobes indexed : ",nrow(methvals_of_interest)),
         breaks = breaks,
-        ylab="Patients",
-        xlab="probes")
+        xlab="probes",
+        main= "Methylation")
   
-  mtext(paste(noquote(selected_gene),"Methylation profile",sep= " "), outer=TRUE,  cex=2, line=-2)
+  mtext(paste(noquote(selected_gene),"Methylation profile",sep= " "), outer=TRUE,  cex=1.5, line=-2)
+  
+  ## Legend pannel (4)
+  
+  plot(1,0,xaxt="n",yaxt="n",xlab="",ylab="",col="white")
+  
+  legend("right",
+         c(paste0("Island : ",sum(sub_epic[,"Feature_Type"]== "Island")),
+           paste0("S_Shore : ",sum(sub_epic[,"Feature_Type"]== "S_Shore")),
+           paste0("S_Shelf : ",sum(sub_epic[,"Feature_Type"]== "S_Shelf")),
+           paste0("N_Shore : ",sum(sub_epic[,"Feature_Type"]== "N_Shore")),
+           paste0("N_Shelf : ",sum(sub_epic[,"Feature_Type"]== "N_Shelf")),
+           paste0("Opensea : ",sum(sub_epic[,"Feature_Type"]== "opensea"))),
+         xpd = TRUE,
+         pch=20,
+         col=c("cornflowerblue","chartreuse4","gold","chocolate","deeppink","black"))
+  
+  legend("bottomleft",
+         c("tumoral","normal"),
+         xpd = TRUE,
+         pch=20,
+         col=c("red","blue"))
   
   
-} 
+  
+  return(sub_epic)
+  
+}  
+
+############## Get_cgi_mat : per genes cgi status, 1 for cgi on bin, 0 if not ############
+  
+get_cgi_mat<-function(features_list = features,
+                      window = c(5000,5000),
+                      bwidth = 25,
+                      cgi_platform = cgi_pf){
+  
+  nbins <- sum(window)/bwidth
+  bins_coordinates <- seq(-abs(window[1]),window[2],bwidth)
+  
+  
+  cgi_mat <- matrix(NA,nrow = nrow(features), ncol = nbins)
+  rownames(cgi_mat)<- rownames(features_list)
+  
+  
+  chrs <- unique(cgi_platform[, 1])
+  
+  print("Indexing CGI per chromosome...")
+  
+  chrs_indexed_cgi <- lapply(chrs, function(chr) {
+    
+    idx <- rownames(cgi_platform)[cgi_platform[["chr"]] %in% chr]
+    ret <- cgi_platform[idx, ]
+    return(ret)
+  })
+  names(chrs_indexed_cgi) <- chrs
+  
+  #gene = "OTX1"
+  
+  for(gene in 1:nrow(features)){
+    
+    
+    bins_coordinates <- seq(-abs(window[1]),window[2],bwidth)
+    
+    if(features[gene,"strand"]=="-"){bins_coordinates <- sort(bins_coordinates,decreasing = TRUE)}
+    
+    TSS <- features_list[gene,"TSS"]
+    
+    
+    cgi_on_chr <- chrs_indexed_cgi[[as.character(features[[gene,1]])]]
+    
+    tmp_cgi_of_interest <- cgi_on_chr[which(abs(cgi_on_chr[,"center"]-TSS) < mean(window)+3500),]
+    cgi_of_interest<- cbind(tmp_cgi_of_interest,abs(tmp_cgi_of_interest[,"center"]-TSS))
+    colnames(cgi_of_interest)<-c(colnames(tmp_cgi_of_interest),"dist to TSS")
+    
+    
+    if(nrow(cgi_of_interest)< 1){next}
+    
+    for(cgi in 1:nrow(cgi_of_interest)){
+      
+      for (i in 2:length(bins_coordinates)){
+        
+        if((cgi_of_interest[cgi,"start"] <= TSS + bins_coordinates[i-1]) & (TSS + bins_coordinates[i-1] <= cgi_of_interest[cgi,"end"])
+           |(cgi_of_interest[cgi,"start"] >= TSS + bins_coordinates[i-1]) & (TSS + bins_coordinates[i-1] >= cgi_of_interest[cgi,"end"]))
+        {cgi_mat[gene,i-1]<- 1}
+      }
+    }
+  }
+  
+  cgi_mat[which(is.na(cgi_mat))]<- 0
+  
+  d = dist(cgi_mat)
+  hc_row = hclust(d, method="complete")
+  Rowv = as.dendrogram(hc_row)
+  dendrogram="row"
+  
+  
+  meth_heatmap(cgi_mat,main = paste0("CGI Binary Matrix : ",window[1],";",window[2],"\n","binwidth = ",bwidth),
+               dendrogram = dendrogram,
+               Rowv=Rowv)
+  
+  return(cgi_mat)
+  
+}
+
+
+plot_genes_dmr <- function(selected_gene = "OTX1",
+                             expr_data = trscr_lusc$data,
+                             meth_study = meth_lusc,
+                             dmrs_table = DMR_table,
+                             DMR_map  = dmrs100k,
+                             genes_list = features,
+                             epic850k = epic){
+  
+  ## Get DMRs & probes on the genes chromosome
+  
+  tmp_DMR <- dmrs_table[names(DMR_map[[selected_gene]]),c("chr","start","end","is.hyper")]
+  DMRs_of_interest<- tmp_DMR[order(tmp_DMR[,"start"]),]
+  probes_on_chr <- epic[which(as.character(epic850k[,1]) == DMRs_of_interest[["chr"]][1]),c("start","end")]
+  
+  if(nrow(DMRs_of_interest) == 0) {stop(paste0("There is no DMRs indexed for ",selected_gene,". Check your DMR_map object"))}
+  
+  probes_on_chr <- epic[which(as.character(epic[,1]) == DMRs_of_interest[["chr"]][1]),]
+  
+  
+  expr_values <- sort(expr_data[selected_gene,intersect(colnames(expr_data),colnames(meth_study$data))])
+  meth_values <- meth_study$data[,intersect(colnames(expr_data),colnames(meth_study$data))]
+  
+  ## Index probes per DMR
+  
+  print("Indexing methylation values per DMR...")
+  probes_per_dmr<-epimedtools::monitored_apply(t(t(rownames(DMRs_of_interest))),1, function(i){
+    
+    DMR<-DMRs_of_interest[i,] 
+    selected_probes <- rownames(probes_on_chr[which(probes_on_chr[,"start"] >= DMR[["start"]] & probes_on_chr[,"end"] <= DMR[["end"]]),
+                                              ])
+    return(selected_probes)
+    
+  })
+  
+  ## get probes around the TSS
+  
+  probes_on_chr[,1]<-as.character(probes_on_chr[,1])   
+  tmp_probes_around_TSS <- dmprocr::get_probe_names(genes_list[selected_gene,],probes_on_chr,"seqnames","start",2500,2500)
+  probes_around_TSS<-probes_on_chr[tmp_probes_around_TSS,c("start","end")]
+  
+  ## merge DMRs probes and TSS related probes
+  
+  tmp_sub_epic<-unique(unlist(probes_per_dmr))
+  tmp<-unique(probes_on_chr[tmp_sub_epic,c("start","end")]) 
+  sub_epic<-rbind(probes_around_TSS,tmp) #,rownames(probes_around_TSS))
+  sub_epic <- sub_epic[order(sub_epic[,1]),]
+  
+  ## Get values and sort by lvl of expression
+  
+  methvals_of_interest <- meth_values[intersect(rownames(sub_epic),rownames(meth_values)),]
+  sorted_vals <- methvals_of_interest[,order(match(colnames(methvals_of_interest),names(expr_values)))]
+  
+  
+  
+  cols1 <- epimedtools::monitored_apply(t(t(names(expr_values))),1, function(i){
+    if(meth_study$exp_grp[i,14] == "tumoral"){col<- "red"}
+    else {col<- "blue"}})
+  
+  print("Plotting...")
+  
+  layout(matrix(c(4,3,
+                  1,2), 2, 2, byrow = TRUE))
+  
+  
+  tmp = cbind(expr_values,1:length(expr_values))
+  expression_plot = plot(tmp,
+                         ylab = paste("Patient index ( ordered by level of expression)"),
+                         xlab = paste("Expression level"),
+                         main = "Expression/Transcription",
+                         col = cols1,
+                         xlim=c(0,20))
+  
+  
+  colors=c("cyan", "black", "red")
+  cols = colorRampPalette(colors)(100)
+  breaks <- c(seq(0,0.33,length=35),seq(0.34,0.66,length=33),seq(0.67,1,length=33))
+  
+  image(sorted_vals,
+        col=cols,
+        breaks = breaks,
+        axes=FALSE,
+        main = paste0("# of DMRs : ",length(probes_per_dmr),"  # of probes : ",nrow(methvals_of_interest)))
+  
+  mtext(paste(noquote(selected_gene),"DMRs vizualisation",sep= " "), outer=TRUE,  cex=2, line=-2)
+  
+  
+  #### xlim trick, only known by very few including myself & LAO TSEU ###
+  
+  TSS <- genes_list[selected_gene,"TSS"]
+  lower_bound <- min(DMRs_of_interest[,"start"])-1000
+  upper_bound <- max(DMRs_of_interest[,"end"])+1000
+  
+  if(sum(TSS > DMRs_of_interest[,"start"]) == 0){
+    lower_bound <- TSS-3000
+  }
+  
+  if(sum(TSS < DMRs_of_interest[,"end"]) == 0){
+    upper_bound <- TSS+3000 
+  }
+  
+  
+  plot(sub_epic$start,rep(1.4,nrow(sub_epic)),
+       xlim = c(lower_bound,upper_bound),
+       yaxt="n",
+       xlab="",
+       ylab="",
+       ylim=c(0,2),
+       pch=19)
+  
+  abline(v=c(TSS-2500,TSS+2500),lty=3)
+  text(TSS,0.4,labels = paste0("TSS : ", TSS),cex = 0.7)
+  points(TSS, 0.5, pch=9, col="red")
+  abline(h=0.5,lty=3)
+  
+  if(nrow(DMRs_of_interest)>0){
+    coords <- apply(DMRs_of_interest,1,function(dmr){
+      if(dmr[["is.hyper"]]=="hyper"){col="red"}
+      else{col="blue"}
+      rect(dmr[["start"]],1,dmr[["end"]],1.2,
+           col=col,
+           border=col)
+      coord <- as.numeric(c(dmr[["start"]],dmr[["end"]]))
+      
+    })
+    colnames(coords)<-DMRs_of_interest[["DMR_id"]]
+    coords <- apply(coords,2,mean)
+    text(coords,rep(1.2,length(coords)),names(coords),cex = 0.5)
+  }
+  
+  plot(1,0,xaxt="n",yaxt="n",xlab="",ylab="",col="white")
+  
+  legend("center",
+         c("tumoral","normal"),
+         xpd = TRUE,
+         pch=20,
+         col=c("red","blue"))
+  
+  
+  return(list(sorted_vals=sorted_vals,
+              dmr_indexed_probes = probes_per_dmr,
+              sub_epic = sub_epic))
+  
+  
+}
   
   

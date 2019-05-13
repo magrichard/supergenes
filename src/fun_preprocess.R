@@ -4,7 +4,7 @@
 get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1) { 
   print(noquote("Creating a list of features..."))
   features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
-
+  
   TSS <- c()
   for (i in 1:dim(features)[1]) {
     if (features$strand[i] == "-") {
@@ -14,7 +14,7 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
       TSS[i] <- features$tx_start[i]
     }
   }
-
+  
   print(noquote("Indexing probe by features"))
   # params
   ## index meth probes by chr
@@ -28,7 +28,7 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
     return(ret)
   })
   names(chrs_indexed_epic) <- chrs
-
+  
   ## index probes by gene name
   feat_indexed_probes <<- epimedtools::monitored_apply(features, 1, function(gene) {
     # gene = features[1,]
@@ -42,20 +42,20 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
     # ret = list(sub_epic=sub_epic, bin1=..., bin2=..., bin3=..., bin4=..., bin5=..., bin6=...)
     return(tmp_probes)
   })
-
-
+  
+  
   features$nb_epic_probes <- sapply(feat_indexed_probes[rownames(features)], length)
   features <- cbind(features, TSS)
   sub_features <- features[features$nb_epic_probes >= nb_probe_min, ]
-
+  
   warning(paste("\n", nrow(features) - nrow(sub_features), "genes were removed due to the followings selection parameters :", "\n",
-    "window downstream the TSS :", dwn_str, "\n",
-    "window upstream the TSS : ", up_str, "\n",
-    "Min number of probes :", nb_probe_min,
-    sep = " "
+                "window downstream the TSS :", dwn_str, "\n",
+                "window upstream the TSS : ", up_str, "\n",
+                "Min number of probes :", nb_probe_min,
+                sep = " "
   ))
   gc()
-
+  
   return(sub_features)
 }
 
@@ -181,8 +181,8 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
 
 
 ################# Index regions per features################
-get_features_regions <- function(features_list = features,
-                                 platform_regions = platform,
+get_regions_indexed_probes <- function(features_list = features,
+                                 platform_regions = bioreg_platform,
                                  data = meth_lusc$data,
                                  epimed_database = epic,
                                  indexed_probes = feat_indexed_probes ){
@@ -194,10 +194,10 @@ get_features_regions <- function(features_list = features,
     
     gene <- names(feat_indexed_probes[index])
     tmp_probes <- feat_indexed_probes[[gene]]
-   
+    
     sub_epic <- epic[intersect(tmp_probes,rownames(data)),c("start","end")]
     
-    pf_gene <- platform[which(platform[,"gene"]==gene),]
+    pf_gene <- platform_regions[which(platform_regions[,"gene"]==gene),]
     
     
     pf_regions = lapply(regions_name, function(region){
@@ -279,19 +279,14 @@ get_features_regions <- function(features_list = features,
 
 get_feat_indexed_DMRs <- function(DMRtable = DMR_table,
                                   features_list = features,
-                                  regions_coordinates = platform,
                                   treshold = 100000){
   
   DMRtable<- DMRtable[order(DMRtable[,"DMR_id"]),]
   
   print("Extractig regions coordinates per available genes...")
   
-  pf<- lapply(rownames(features_list), function(gene){
-    regions_coordinates[which(regions_coordinates[,"gene"]==gene),]
-  })
-  names(pf)<- rownames(features_list)
-  
-  
+
+
   
   print("Indexing DMRs per genes...")
   
@@ -406,7 +401,9 @@ subset_vals_per_bins<-function(data = meth_lusc$data,
                                values_per_patient = means_per_regions_per_genes_per_patient,
                                binlist = c("bin1","bin2","bin3","bin4","bin5","bin6"),
                                fun = mean,
-                               probes_index = feat_indexed_probes, ...){
+                               probes_index = feat_indexed_probes,
+                               overall=FALSE,
+                               ...){
   
   names<-names(which(unlist(lapply(probes_index,is.null))==FALSE))
   
@@ -420,22 +417,29 @@ subset_vals_per_bins<-function(data = meth_lusc$data,
     
   }
   )
+  if(overall==T){
+    tmp = reduce_rows(data, probes_index, fun, na.rm=T,...) ### note that you need feat_indexed_probes loaded into your environnment, it should be if you follow the pipeline.
+    overall = apply(tmp,1, mean , na.rm=T,...)
+
+    foo <- intersect(names(overall),rownames(vals_per_genes))
+    vals_per_genes <- cbind(vals_per_genes,overall[foo])
+    colnames(vals_per_genes) <-c(binlist,"overall")
+    if(!is.null(foo)){
+      rownames(vals_per_genes) <- foo}
+    return(vals_per_genes)
+  }
   
-  
-  tmp = reduce_rows(data, feat_indexed_probes, fun, na.rm=T,...) ### note that you need feat_indexed_probes loaded into your environnment, it should be if you follow the pipeline.
-  overall = apply(tmp,1, mean , na.rm=T,...)
-  
-  
+  else{
   vals_per_genes <- do.call(cbind,vals)
   rownames(vals_per_genes)<-names
-  foo <- intersect(names(overall),rownames(vals_per_genes))
-  vals_per_genes <- cbind(vals_per_genes,overall[foo])
-  colnames(vals_per_genes) <-c(binlist,"overall")
-  if(!is.null(foo)){
-  rownames(vals_per_genes) <- foo}
-  
-  
   return(vals_per_genes)
+  }
+  
+  
+
+  
+  
+  
   
   gc()
   
@@ -537,7 +541,7 @@ process_meth_data<-function(cnv_processed_data = cnv_processed,
 
 get_indexed_binreg<-function(features_list = features,
                              epimed = epic,
-                             platform_regions = platform,
+                             platform_regions = bioreg_platform,
                              data = meth_lusc$data){
   
   pf_chr_colname <- "seqnames"
@@ -756,16 +760,16 @@ get_indexed_cgi <- function(window = c(100000,100000),
       ## create a list of probes for each level of "Feature_Type" + very very very smart trick to deal with 1 length list becoming
       ## character
       
-
+      
       
     })
     
     for (i in 1:length(foo)){
       if(is.list(foo[[i]])){foo[i]<-foo[[i]]}
     }
-      
-      
-      
+    
+    
+    
     
     names(foo)<- features_type_names
     
@@ -792,13 +796,47 @@ get_indexed_cgi <- function(window = c(100000,100000),
   
 }
 
+################ get closest cgi from cgi_indexed_probes #################
+
+get_genes_closest_cgis<-function(features_list = features,
+                                 cgi_probes_index = cgi_indexed_probes,
+                                 cgi_platform = cgi_pf){
+  
+  
+  
+  
+  feat_closest_cgi<-apply(t(t(rownames(features_list))),1,function(gene){
+    
+    print(paste0("Extracting closest CGI for ",gene," ..."))
+    
+    
+    cgi_chr <- cgi_platform[which(as.character(cgi_platform[,"chr"]) == features_list[gene,1]),]
+    TSS <- features_list[gene,"TSS"]
+    
+    closest_cgi <-rownames(cgi_chr[which(abs(cgi_chr[,"center"]-TSS)==min(abs(cgi_chr[,"center"]-TSS),na.rm=T)),])
+    ret <- cgi_indexed_probes[[closest_cgi]]
+    
+  })
+  names(feat_closest_cgi)<- rownames(features_list)
+  
+  
+  
+  
+  
+  
+  return(feat_closest_cgi)
+  
+  
+}
+
+
 ############# Index probes per DMR #################
 
 get_dmrs_indexed_probes <-function(DMRtable = DMR_table,
                                    meth_platform = meth_lusc$platform){
   
   
-  
+  # index per chromosome
   
   chrs <- unique(DMRtable[, 1])
   chrs_indexed_probes<- lapply(chrs, function(chr) {
@@ -816,7 +854,9 @@ get_dmrs_indexed_probes <-function(DMRtable = DMR_table,
     DMR<-DMRtable[i,]
     probes_on_chr<- chrs_indexed_probes[[DMR[["chr"]]]]
     
+    ## Select probes placed between DMRs start and end
     
+  
     selected_probes <- rownames(probes_on_chr[which(probes_on_chr[,2] >= DMR[["start"]] & probes_on_chr[,3] <= DMR[["end"]]),
                                               ])
     return(selected_probes)
@@ -828,3 +868,86 @@ get_dmrs_indexed_probes <-function(DMRtable = DMR_table,
   return(probes_per_dmr)
   
 }
+
+
+################ get probes indexed per cgi ##################################
+
+
+get_cgis_probes <- function(cgi.coordinates = cgi_coordinates,
+                            cgi_platform = cgi_pf,
+                            meth_platform = meth_lusc$platform){
+  
+  
+  
+  
+  # get features type
+  
+  types<-unique(meth_platform[,"Feature_Type"])
+  
+  
+  # index data per chromosome to reduce compute time
+  
+  chrs <- unique(cgi.coordinates[, 1])
+  
+  print("Indexing CGI per chromosome...")
+  chrs_indexed_probes <- lapply(chrs, function(chr) {
+    
+    idx <- rownames(cgi.coordinates)[cgi.coordinates[["chrs"]] %in% chr]
+    ret <- cgi.coordinates[idx, ]
+    return(ret)
+  })
+  names(chrs_indexed_probes) <- chrs
+  
+  
+  
+  tmp <- meth_platform[,c("Chromosome","Feature_Type")]
+  print("Indexing probes per chromosome")
+  chrs_indexed_type <- lapply(chrs, function(chr) {
+    
+    idx <- rownames(tmp)[tmp[["Chromosome"]] %in% chr]
+    ret <- tmp[idx, ]
+    return(ret)
+  })
+  names(chrs_indexed_type) <- chrs
+  
+  
+  cgi_pf <- cgi_platform[which(cgi_platform[,"chr"] != "*"),]
+  
+  probes_per_cgi<-epimedtools::monitored_apply(t(t(rownames(cgi_pf))),1,mod=50, function(cgi){
+    
+    # get probes on ith CGI
+    
+    chr<- cgi_pf[cgi,"chr"]
+    probes_on_chr <- chrs_indexed_probes[[as.character(chr)]]
+    tmp_probes<-rownames(probes_on_chr[which(probes_on_chr[["cgi_start"]] == cgi_pf[cgi,"start"]),])
+    probes_type <- chrs_indexed_type[[as.character(chr)]][tmp_probes,]
+    
+    # Index probes per feature type (island, shore...)
+    
+    ret<- apply(t(t(types)),1,function(type){
+      
+      foo<-assign(paste0(type),rownames(probes_type[which(probes_type[,"Feature_Type"] == type),]))
+      
+      type_probes <- foo[which(!is.na(foo))]
+      
+      return(type_probes)
+      
+    })
+    
+    names(ret)<- types
+    
+    return(ret)
+    
+    
+  })
+  
+  names(probes_per_cgi)<- rownames(cgi_pf)
+  
+  return(probes_per_cgi)
+}
+
+
+
+
+
+

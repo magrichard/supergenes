@@ -23,160 +23,32 @@ Until this vignette, we only used genes features to try to identify and analyze 
 
 In a first part, we'll present a per-gene visualisation tool and in the second one, a wide database visualisation trough heatmap pipeline, as in the previous vignettes.
 
-Notably, a table named `cgi_pf` is used, of dimension 27k * 5, processed by hand from TCGA database and giving coordinates, width and center of each CpG islands (CGI) indexed on epic database.
+Notably, a table named `cgi_pf` is used, of dimension 27k * 5, processed by hand from TCGA database and giving coordinates, width and center of each CpG islands (CGI) indexed on epic database. Is also used a `cgi_coordinates` which gives the closest cgi coordinates for each probe, extracted and processed from TCGA database.
 
 
 # CGI based gene visualisation
 
-Firstly, we defined a `plot_gene_cgi`, showing CGI and probes in a given `window` (fixed here at [100k,100k]).
 
-## Code
+
 ```{r}
 targeted_genes <- penda_superup_deregulated
 features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
-```
 
-```{r}
-plot_gene_cgi <- function(selected_gene = "OTX1",
-                           window = c(100000,100000),
-                           meth_platform = meth_lusc$platform,
-                           meth_data = meth_lusc$data,
-                           cgi_platform = cgi_pf,
-                           features_list = features){
-  
-  
-  
-  TSS <- features_list[selected_gene,"TSS"]
-  
-  
-  ## get closest cgi + cgi in range
-  
-  cgi_chr <- cgi_platform[which(as.character(cgi_platform[,"chr"]) == features_list[selected_gene,1]),]
-  tmp <- cgi_chr[which(abs(cgi_chr[,"center"]-TSS) < mean(window)+5000),]
-  cgi_of_interest<- cbind(tmp,abs(tmp[,"center"]-TSS))
-  colnames(cgi_of_interest)<-c(colnames(tmp),"dist to TSS")
-  closest_cgi <-cgi_chr[which(abs(cgi_chr[,"center"]-TSS)==min(abs(cgi_chr[,"center"]-TSS),na.rm=T)),]
-  
-  ## get probes
-  
-  tmp_probes <- dmprocr::get_probe_names(features_list[selected_gene,],
-                                         meth_platform,
-                                         "Chromosome",
-                                         "Start",
-                                         up_str=window[1],
-                                         dwn_str=window[2])
-  
-  sub_epic <- meth_platform[tmp_probes, c(2,3,9)]
-  
-  ## cols of probes dots
-  
 
-  
-  cols<-sapply(rownames(sub_epic), function(probe){
-    
-    if(sub_epic[probe,"Feature_Type"] == "Island")
-      {col = "cornflowerblue"}
-
-    
-    if(sub_epic[probe,"Feature_Type"] == "S_Shore")
-      {col = "chartreuse4"}
-
-    
-    if(sub_epic[probe,"Feature_Type"] == "S_Shelf")
-      {col="gold"}
-    
-    
-    if(sub_epic[probe,"Feature_Type"] == "N_Shore")
-      {col = "chocolate"}
-
-    
-    if(sub_epic[probe,"Feature_Type"] == "N_Shelf")
-      {col = "darkslategrey"}
-      
-    if(sub_epic[probe,"Feature_Type"] == ".")
-      {col= "black"}
-      
-    
-    return(col)
-  })
-  
-  layout(matrix(1:2,1), respect=TRUE)
-  
-  plot(sub_epic$Start, rep(1,length(sub_epic$Start)), pch=19, xlim=c(closest_cgi[["center"]]-window[1],closest_cgi[["center"]]+window[2]), cex=1.1, yaxt="n",
-       main = paste0("nprobes = ",nrow(sub_epic),", ncgi = ",nrow(cgi_of_interest)),
-       xlab="Coordinates (in bp)",
-       ylab="",
-       ylim=c(0,2),
-       col = cols)
-  
-  legend("topleft",
-         c("Island","S_Shore","S_Shelf","N_Shore","N_Shelf","Opensea"),
-         xpd = TRUE,
-         inset=c(-0.34,0),
-         pch=20,
-         col=c("cornflowerblue","chartreuse4","gold","chocolate","darkslategrey","black"))
-
-  
-  
-  text(TSS,0.4,labels = paste0("TSS : ", TSS),cex = 0.7)
-  points(TSS, 0.5, pch=9, col="red")
-  abline(h=0.5,lty=3)
-  
-  if(nrow(cgi_of_interest)>0){
-    apply(t(t(rownames(cgi_of_interest))),1,function(cgi){
-      
-      rect(cgi_of_interest[cgi,"start"],1.4,cgi_of_interest[cgi,"end"],1.2,
-           col = "red",
-           border="black")
-      
-    })
-  }
-  
-  ## Indexing probes per cgi
-  
-  tmp_cgi_index <- apply(t(t(rownames(sub_epic))),1, function(probe){
-    foo <-apply(t(t(rownames(cgi_of_interest))),1,function(cgi){
-      
-      if(sub_epic[probe,"Start"] < cgi_of_interest[cgi,"end"] & sub_epic[probe,"Start"] >= cgi_of_interest[cgi,"start"]){
-        rownames(cgi_of_interest[cgi,])}
-    })
-    
-    index<-unlist(foo)
-    if(!is.null(index)){
-      names(index)<- probe
+if(!exists("cgi_indexed_probes")){
+  if(!file.exists("~/projects/supergenes/data/RDS/cgi_indexed_probes")){
+    cgi_indexed_probes <- get_cgis_probes()
+    saveRDS(cgi_indexed_probes,"~/projects/supergenes/data/RDS/cgi_indexed_probes")
     }
-    return(index)
-  })
-  
-  cgi_index <- sort(unlist(tmp_cgi_index))
-  
-  methvals_of_interest <- meth_data[intersect(rownames(meth_data),names(cgi_index)),]
-  methvals_of_interest<- methvals_of_interest[names(cgi_index),]
-  
-  
-  colors=c("cyan", "black", "red")
-  cols = colorRampPalette(colors)(100)
-  
-  breaks <- c(seq(0,0.33,length=35),
-              seq(0.34,0.66,length=33),
-              seq(0.67,1,length=33))
-  
-  image(methvals_of_interest,
-        axes=FALSE,
-        col=cols,
-        main=paste0("nprobes indexed : ",nrow(methvals_of_interest)),
-        breaks = breaks,
-        ylab="Patients",
-        xlab="probes")
-  
-  mtext(paste(noquote(selected_gene),"Methylation profile",sep= " "), outer=TRUE,  cex=2, line=-2)
-  
-  
-} 
+  cgi_indexed_probes <- readRDS("~/projects/supergenes/data/RDS/cgi_indexed_probes")
+}
+
+feat_closest_cgi <- get_genes_closest_cgis()
 
 ```
 
-## Output
+Firstly, we defined a `plot_gene_cgi`, showing CGI and probes in a given `window` (fixed here at [100k,100k]).
+
 
 ```{r}
 plot_gene_cgi("FKBP4")
@@ -184,447 +56,226 @@ plot_gene_cgi("OTX1")
 plot_gene_cgi("CDT1")
 ```
 
-Note that probes are sorted by coordinates. Thus, the heatmap is readable from left to right. As we can see, there is no "neutral" CGI. We "loose" many probes between left and right plots due to index : we include in the heatmap only probes on CGIs. The three examples shows that there is different genes methylation profile : gene with CGI concentrated around TSS, gene with CGI distributed relatively evenly over the window (CDT1) and genes with very spread CGI (FKBP4).
+Note that probes are sorted by coordinates. Thus, the heatmap is readable from left to right. 
 
 
 
-# Wide database heatmaps
+# Wide database plots
 
-## Preprocess
+## Superup genes
 
-To get our pipeline working, we need as usual a 2-level depth list. The following index probes per CGI features such as shore, shelf, opensea etc.
+### CGI binary matrix
 
-```{r}
-get_indexed_cgi <- function(window = c(100000,100000),
-                            features_list = features,
-                            cgi_platform = cgi_pf,
-                            meth_data = meth_lusc$data,
-                            meth_platform = meth_lusc$platform){
-  
-  
-  cgi_indexed_probes<- epimedtools::monitored_apply(t(t(rownames(features_list))),mod = 20,1,function(gene){
-    print(noquote(paste0("Indexing probes for gene ",gene," ...")))
-    
-    chr<-features_list[gene,1]
-    TSS <- features_list[gene,"TSS"]
-    
-    meth_platform_chr<- meth_platform[rownames(meth_platform)[meth_platform[[1]] %in% chr],]
-      tmp_probes <- dmprocr::get_probe_names(features_list[gene,], meth_platform_chr, "Chromosome", "Start", window[1], window[2])
-    
-    ## get probe for gene
-    
-    sub_platform <- meth_platform_chr[tmp_probes, c("Chromosome","Start","Feature_Type")]
-    
-    
-    
-    for (i in which(sub_platform[,3]==".")){
-      if(sub_platform[i,"Start"] > TSS){sub_platform[i,"Feature_Type"] <- "upper_opensea"}
-      if(sub_platform[i,"Start"] < TSS){sub_platform[i,"Feature_Type"] <- "lower_opensea"}  
-      ### encode "." as opensea
-    }
-    features_type_names <- unique(sub_platform[,"Feature_Type"])
-    
-    foo<-apply(t(t(features_type_names)),1,function(type){
-      
-      
-      tmp_type<-assign(paste0(type),rownames(sub_platform[which(sub_platform[,"Feature_Type"]==type),]))
-      if(!is.list(tmp_type)){assign(paste0(type),list(tmp_type))}
-      else{assign(paste0(type),tmp_type)}
-      ## create a list of probes for each level of "Feature_Type" + very very very smart trick to deal with 1 length list becoming
-      ## character
-      
-
-      
-    })
-    
-    for (i in 1:length(foo)){
-      if(is.list(foo[[i]])){foo[i]<-foo[[i]]}
-    }
-      
-      
-      
-    
-    names(foo)<- features_type_names
-    
-    
-    
-    
-    
-    ret = list(sub_epic = sub_platform,
-               lower_opensea = foo$lower_opensea,
-               S_shore = foo$S_Shore,
-               S_shelf = foo$S_Shelf,
-               Island = foo$Island,
-               N_shelf = foo$N_Shelf,
-               N_shore = foo$N_Shore,
-               upper_opensea = foo$upper_opensea)
-    
-    return(ret)
-    
-    
-  })
-  
-  names(cgi_indexed_probes)<- rownames(features_list)
-  return(cgi_indexed_probes)
-  
-}
-
-cgi_indexed_probes <- get_indexed_cgi()
-```
-
-
-## Heatmaps superup
-
-### Tumoral tissues
+The following plot is a visualisation of CGI around the TSS For each plot : a parametrized window surrounding the TSS is separated in to parametrizable bins, and each bins gets a 1 if there is a CGI on it, 0 if else.
 
 ```{r}
-map_cgi<-reduce_map(cgi_indexed_probes,c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-
-
-means_per_regions_per_genes_per_patient_t <- reduce_rows(meth_tumoral,map_cgi, mean ,na.rm=T)
-means_t <- subset_vals_per_bins(data = meth_tumoral,
-                             values_per_patient = means_per_regions_per_genes_per_patient_t,
-                             fun = mean,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-
-meth_heatmap(means_t, main = "mean of means superup/tumoral")
+get_cgi_mat(window=c(5000,5000))
 ```
 
-
-```{r}
-sd_per_regions_per_genes_per_patient_t <- reduce_rows(meth_tumoral,map_cgi, sd ,na.rm=T)
-sds_t <- subset_vals_per_bins(data = meth_tumoral,
-                              values_per_patient = sd_per_regions_per_genes_per_patient_t,
-                              fun = sd,
-                              binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-meth_heatmap(sds_t, main = "mean of sd superup/tumoral")
-```
-
-```{r}
-rsd_per_regions_per_genes_per_patient_t <- reduce_rows(meth_tumoral,map_cgi, rsd ,na.rm=T)
-rsds_t <- subset_vals_per_bins(data = meth_tumoral,
-                            values_per_patient = rsd_per_regions_per_genes_per_patient_t,
-                            fun = rsd,
-                            binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral")
-```
 
 ### Healthy tissues
 
 ```{r}
-means_per_regions_per_genes_per_patient_h<- reduce_rows(meth_normal,map_cgi, mean ,na.rm=T)
-means_h <- subset_vals_per_bins(data = meth_normal,
-                              values_per_patient = means_per_regions_per_genes_per_patient_h,
-                              fun = mean,
-                              binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
+binlist = c("N_Shore","opensea","S_Shore","Island","S_Shelf","N_Shelf")
+closest_cgi_map<-reduce_map(feat_closest_cgi,c("N_Shore","opensea","S_Shore","Island","S_Shelf","N_Shelf"))
+data_reduced_healthy <- reduce_rows(meth_normal,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_healthy <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = data_reduced_healthy,
+                             fun = mean,
+                             binlist=binlist,probes_index = feat_closest_cgi)
+meth_heatmap(means_per_cgi_healthy, main = "mean of means superup/healthy tissues")
 
-meth_heatmap(means_h, main = "mean of means superup/healthy")
-```
+sd_reduced_healthy <- reduce_rows(meth_normal,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_healthy <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = sd_reduced_healthy,
+                             fun = sd,
+                             binlist=binlist,probes_index = feat_closest_cgi)
+meth_heatmap(sd_per_cgi_healthy, main = "mean of sd superup/healthy tissues")
 
-```{r}
-sd_per_regions_per_genes_per_patient_h <- reduce_rows(meth_normal,map_cgi, sd ,na.rm=T)
-sds_h <- subset_vals_per_bins(data = meth_normal,
-                            values_per_patient = sd_per_regions_per_genes_per_patient_h,
-                            fun = sd,
-                            binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-meth_heatmap(sds_h, main = "mean of sd superup/healthy")
-
-```
-
-```{r}
-rsd_per_regions_per_genes_per_patient_h <- reduce_rows(meth_normal,map_cgi, rsd ,na.rm=T)
-rsds_h <- subset_vals_per_bins(data = meth_normal,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_h,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-meth_heatmap(rsds_h, main = "mean of rsd superup/healthy")
-```
-
-```{r}
-boxplot_res(means_h,means_t)
-boxplot_res(sds_h,sds_t)
-boxplot_res(rsds_h,rsds_t)
-```
-
-### Differential values
-
-```{r include=FALSE}
-  mean_values_normal_tissues <- apply(meth_normal,1,mean,na.rm=T)
-  meth_diff <- t(sapply(1:nrow(meth_tumoral), function(i) meth_tumoral[i,] - mean_values_normal_tissues[i]))
-  rownames(meth_diff)<-rownames(meth_lusc$data)
-```
-
-```{r}
-means_per_regions_per_genes_per_patient_d<- reduce_rows(meth_diff,map_cgi, mean ,na.rm=T)
-means_d <- subset_vals_per_bins(data = meth_diff,
-                              values_per_patient = means_per_regions_per_genes_per_patient_d,
-                              fun = mean,
-                              binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-
-meth_heatmap(means_d, main = "mean of means superup/differential")
-```
-
-```{r}
-sd_per_regions_per_genes_per_patient_d <- reduce_rows(meth_diff,map_cgi, sd ,na.rm=T)
-sds_d <- subset_vals_per_bins(data = meth_diff,
-                            values_per_patient = sd_per_regions_per_genes_per_patient_d,
-                            fun = sd,
-                            binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-meth_heatmap(sds_d, main = "mean of sd superup/differential")
-
-```
-
-```{r}
-rsd_per_regions_per_genes_per_patient_d <- reduce_rows(meth_diff,map_cgi, rsd ,na.rm=T)
-rsds_d <- subset_vals_per_bins(data = meth_diff,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_d,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
-meth_heatmap(rsds_d, main = "mean of rsd superup/differential")
-rsds_d
-```
-
-
-## Heatmaps superdown
-
-
-```{r include=FALSE}
-features_down <- get_features(penda_superdown_deregulated, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
-cgi_indexed_probes_down <- get_indexed_cgi(features_list = features_down)
-map_cgi_down<-reduce_map(cgi_indexed_probes_down,c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
 ```
 
 ### Tumoral tissues
 
-```{r echo=FALSE}
-means_per_regions_per_genes_per_patient_t_d <- reduce_rows(meth_tumoral,map_cgi_down, mean ,na.rm=T)
-means_t_d <- subset_vals_per_bins(data = meth_tumoral,
-                             values_per_patient = means_per_regions_per_genes_per_patient_t_d,
+```{r}
+means_reduced_tumoral <- reduce_rows(meth_tumoral,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_tumoral <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = means_reduced_tumoral,
                              fun = mean,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
+                             binlist=binlist,probes_index = feat_closest_cgi)
+meth_heatmap(means_per_cgi_tumoral, main = "mean of means superup/tumoral tissues")
 
-meth_heatmap(means_t_d, main = "mean of means superdown/tumoral")
-
-```
-
-```{r echo=FALSE}
-sd_per_regions_per_genes_per_patient_t_d <- reduce_rows(meth_tumoral,map_cgi_down, sd ,na.rm=T)
-sd_t_d <- subset_vals_per_bins(data = meth_tumoral,
-                             values_per_patient = sd_per_regions_per_genes_per_patient_t_d,
+sd_reduced_tumoral <- reduce_rows(meth_tumoral,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_tumoral <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = sd_reduced_tumoral,
                              fun = sd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
-
-meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral")
-```
-
-
-```{r echo=FALSE}
-rsd_per_regions_per_genes_per_patient_t_d <- reduce_rows(meth_tumoral,map_cgi_down, sd ,na.rm=T)
-rsds_t_d <- subset_vals_per_bins(data = meth_tumoral,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_t_d,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
-
-meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral")
-```
-
-### Healthy tissues
-
-```{r echo=FALSE}
-means_per_regions_per_genes_per_patient_h_d <- reduce_rows(meth_normal,map_cgi_down, mean ,na.rm=T)
-means_h_d <- subset_vals_per_bins(data = meth_normal,
-                             values_per_patient = means_per_regions_per_genes_per_patient_h_d,
-                             fun = mean,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
-
-meth_heatmap(means_h_d, main = "mean of means superdown/healthy")
-
-```
-
-```{r echo=FALSE}
-sd_per_regions_per_genes_per_patient_h_d <- reduce_rows(meth_normal,map_cgi_down, sd ,na.rm=T)
-sd_h_d <- subset_vals_per_bins(data = meth_normal,
-                             values_per_patient = sd_per_regions_per_genes_per_patient_h_d,
-                             fun = sd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
-
-meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy")
-```
-
-```{r echo=FALSE}
-rsd_per_regions_per_genes_per_patient_h_d <- reduce_rows(meth_normal,map_cgi_down, sd ,na.rm=T)
-rsds_h_d <- subset_vals_per_bins(data = meth_normal,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_h_d,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
-
-meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy")
-```
-
-### Boxplots
-
-```{r echo=FALSE}
-boxplot_res(means_h_d,means_t_d)
-boxplot_res(sd_h_d,sd_t_d)
-boxplot_res(rsds_h_d,rsds_t_d)
+                             binlist=binlist,probes_index = feat_closest_cgi)
+meth_heatmap(sd_per_cgi_tumoral, main = "mean of sd superup/tumoral tissues")
 ```
 
 ### Differential values
 
-```{r echo=FALSE}
-means_per_regions_per_genes_per_patient_d_d <- reduce_rows(meth_diff,map_cgi_down, mean ,na.rm=T)
-means_d_d <- subset_vals_per_bins(data = meth_diff,
-                             values_per_patient = means_per_regions_per_genes_per_patient_d_d,
+
+```{r}
+means_reduced_differential <- reduce_rows(meth_diff,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_differential <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = means_reduced_differential,
                              fun = mean,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
+                             binlist=binlist,probes_index = feat_closest_cgi)
+meth_heatmap(means_per_cgi_differential, main = "mean of means superup/differential values")
 
-meth_heatmap(means_d_d, main = "mean of means superdown/diff")
-
-```
-
-```{r echo=FALSE}
-sd_per_regions_per_genes_per_patient_d_d <- reduce_rows(meth_diff,map_cgi_down, sd ,na.rm=T)
-sd_d_d <- subset_vals_per_bins(data = meth_diff,
-                             values_per_patient = sd_per_regions_per_genes_per_patient_d_d,
+sd_reduced_differential <- reduce_rows(meth_diff,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_differential <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = sd_reduced_differential,
                              fun = sd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
-
-meth_heatmap(sd_d_d, main = "mean of sd superdown/diff")
+                             binlist=binlist,probes_index = feat_closest_cgi)
+meth_heatmap(sd_per_cgi_differential, main = "mean of sd superup/differential values")
 ```
 
-```{r echo=FALSE}
-rsd_per_regions_per_genes_per_patient_d_d <- reduce_rows(meth_diff,map_cgi_down, sd ,na.rm=T)
-rsds_d_d <- subset_vals_per_bins(data = meth_diff,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_d_d,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_down)
+## Superdown genes
 
-meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff")
+```{r}
+targeted_genes <- penda_superdown_deregulated
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_closest_cgi_down <- get_genes_closest_cgis()
 ```
 
 
-## Heatmap superconserved
+```{r}
+get_cgi_mat(window=c(5000,5000))
+```
 
 
-```{r include=FALSE}
+### Healthy tissues
+
+```{r}
+closest_cgi_map<-reduce_map(feat_closest_cgi_down,c("N_Shore","opensea","S_Shore","Island","S_Shelf","N_Shelf"))
+data_reduced_healthy <- reduce_rows(meth_normal,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_healthy <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = data_reduced_healthy,
+                             fun = mean,
+                             binlist=binlist,probes_index = feat_closest_cgi_down)
+meth_heatmap(means_per_cgi_healthy, main = "mean of means superdown/healthy tissues")
+
+sd_reduced_healthy <- reduce_rows(meth_normal,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_healthy <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = sd_reduced_healthy,
+                             fun = sd,
+                             binlist=binlist,probes_index = feat_closest_cgi_down)
+meth_heatmap(sd_per_cgi_healthy, main = "mean of sd superdown/healthy tissues")
+
+```
+
+### Tumoral tissues
+
+```{r}
+means_reduced_tumoral <- reduce_rows(meth_tumoral,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_tumoral <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = means_reduced_tumoral,
+                             fun = mean,
+                             binlist=binlist,probes_index = feat_closest_cgi_down)
+meth_heatmap(means_per_cgi_tumoral, main = "mean of means superdown/tumoral tissues")
+
+sd_reduced_tumoral <- reduce_rows(meth_tumoral,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_tumoral <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = sd_reduced_tumoral,
+                             fun = sd,
+                             binlist=binlist,probes_index = feat_closest_cgi_down)
+meth_heatmap(sd_per_cgi_tumoral, main = "mean of sd superdown/tumoral tissues")
+```
+
+### Differential values
+
+
+
+
+```{r}
+means_reduced_differential <- reduce_rows(meth_diff,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_differential <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = means_reduced_differential,
+                             fun = mean,
+                             binlist=binlist,probes_index = feat_closest_cgi_down)
+meth_heatmap(means_per_cgi_differential, main = "mean of means superdown/differential values")
+
+sd_reduced_differential <- reduce_rows(meth_diff,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_differential <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = sd_reduced_differential,
+                             fun = sd,
+                             binlist=binlist,probes_index = feat_closest_cgi_down)
+meth_heatmap(sd_per_cgi_differential, main = "mean of sd superdown/differential values")
+```
+
+
+## Supercons genes
+
+
+```{r}
 targeted_genes <- penda_superconserved
-features_cons <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
-cgi_indexed_probes_cons <- get_indexed_cgi(features_list = features_cons)
-map_cgi_cons<-reduce_map(cgi_indexed_probes_cons,c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"))
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_closest_cgi_cons <- get_genes_closest_cgis()
+closest_cgi_map<-reduce_map(feat_closest_cgi_cons,c("N_Shore","opensea","S_Shore","Island","S_Shelf","N_Shelf"))
 ```
 
 
-### Tumoral tissues
-
-
-```{r echo=FALSE}
-means_per_regions_per_genes_per_patient_t_c <- reduce_rows(meth_tumoral,map_cgi_cons, mean ,na.rm=T)
-means_t_c <- subset_vals_per_bins(data = meth_tumoral,
-                             values_per_patient = means_per_regions_per_genes_per_patient_t_c,
-                             fun = mean,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
-
-meth_heatmap(means_t_c, main = "mean of means supercons/tumoral")
-
+```{r}
+get_cgi_mat(window=c(5000,5000))
 ```
 
-```{r echo=FALSE}
-sd_per_regions_per_genes_per_patient_t_c <- reduce_rows(meth_tumoral,map_cgi_cons, sd ,na.rm=T)
-sd_t_c <- subset_vals_per_bins(data = meth_tumoral,
-                             values_per_patient = sd_per_regions_per_genes_per_patient_t_c,
-                             fun = sd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
-
-meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral")
-```
-
-
-```{r echo=FALSE}
-rsd_per_regions_per_genes_per_patient_t_c <- reduce_rows(meth_tumoral,map_cgi_cons, sd ,na.rm=T)
-rsds_t_c <- subset_vals_per_bins(data = meth_tumoral,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_t_c,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
-
-meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral")
-```
 
 ### Healthy tissues
 
-```{r echo=FALSE}
-means_per_regions_per_genes_per_patient_h_c <- reduce_rows(meth_normal,map_cgi_cons, mean ,na.rm=T)
-means_h_c <- subset_vals_per_bins(data = meth_normal,
-                             values_per_patient = means_per_regions_per_genes_per_patient_h_c,
+```{r}
+data_reduced_healthy <- reduce_rows(meth_normal,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_healthy <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = data_reduced_healthy,
                              fun = mean,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
+                             binlist=binlist,probes_index = feat_closest_cgi_cons)
+meth_heatmap(means_per_cgi_healthy, main = "mean of means supercons/healthy tissues")
 
-meth_heatmap(means_h_c, main = "mean of means supercons/healthy")
-
-```
-
-```{r echo=FALSE}
-sd_per_regions_per_genes_per_patient_h_c <- reduce_rows(meth_normal,map_cgi_cons, sd ,na.rm=T)
-sd_h_c <- subset_vals_per_bins(data = meth_normal,
-                             values_per_patient = sd_per_regions_per_genes_per_patient_h_c,
+sd_reduced_healthy <- reduce_rows(meth_normal,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_healthy <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = sd_reduced_healthy,
                              fun = sd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
+                             binlist=binlist,probes_index = feat_closest_cgi_cons)
+meth_heatmap(sd_per_cgi_healthy, main = "mean of sd supercons/healthy tissues")
 
-meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy")
 ```
 
-```{r echo=FALSE}
-rsd_per_regions_per_genes_per_patient_h_c <- reduce_rows(meth_normal,map_cgi_cons, sd ,na.rm=T)
-rsds_h_c <- subset_vals_per_bins(data = meth_normal,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_h_c,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
+### Tumoral tissues
 
-meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy")
-```
+```{r}
+means_reduced_tumoral <- reduce_rows(meth_tumoral,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_tumoral <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = means_reduced_tumoral,
+                             fun = mean,
+                             binlist=binlist,probes_index = feat_closest_cgi_cons)
+meth_heatmap(means_per_cgi_tumoral, main = "mean of means supercons/tumoral tissues")
 
-
-
-### Boxplots
-
-```{r echo=FALSE}
-boxplot_res(means_h_c,means_t_c)
-boxplot_res(sd_h_c,sd_t_c)
-boxplot_res(rsds_h_c,rsds_t_c)
+sd_reduced_tumoral <- reduce_rows(meth_tumoral,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_tumoral <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = sd_reduced_tumoral,
+                             fun = sd,
+                             binlist=binlist,probes_index = feat_closest_cgi_cons)
+meth_heatmap(sd_per_cgi_tumoral, main = "mean of sd supercons/tumoral tissues")
 ```
 
 ### Differential values
 
-```{r echo=FALSE}
-means_per_regions_per_genes_per_patient_d_c <- reduce_rows(meth_diff,map_cgi_cons, mean ,na.rm=T)
-means_d_c <- subset_vals_per_bins(data = meth_diff,
-                             values_per_patient = means_per_regions_per_genes_per_patient_d_c,
+
+
+
+```{r}
+means_reduced_differential <- reduce_rows(meth_diff,closest_cgi_map, mean ,na.rm=T)
+means_per_cgi_differential <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = means_reduced_differential,
                              fun = mean,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
+                             binlist=binlist,probes_index = feat_closest_cgi_cons)
+meth_heatmap(means_per_cgi_differential, main = "mean of means supercons/differential values")
 
-meth_heatmap(means_d_c, main = "mean of means supercons/diff")
-
-```
-
-
-```{r echo=FALSE}
-sd_per_regions_per_genes_per_patient_d_c <- reduce_rows(meth_diff,map_cgi_cons, sd ,na.rm=T)
-sd_d_c <- subset_vals_per_bins(data = meth_diff,
-                             values_per_patient = sd_per_regions_per_genes_per_patient_d_c,
+sd_reduced_differential <- reduce_rows(meth_diff,closest_cgi_map, sd ,na.rm=T)
+sd_per_cgi_differential <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = sd_reduced_differential,
                              fun = sd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
-
-meth_heatmap(sd_d_c, main = "mean of sd supercons/diff")
+                             binlist=binlist,probes_index = feat_closest_cgi_cons)
+meth_heatmap(sd_per_cgi_differential, main = "mean of sd supercons/differential values")
 ```
-
-
-```{r echo=FALSE}
-rsd_per_regions_per_genes_per_patient_d_c <- reduce_rows(meth_diff,map_cgi_cons, sd ,na.rm=T)
-rsds_d_c <- subset_vals_per_bins(data = meth_diff,
-                             values_per_patient = rsd_per_regions_per_genes_per_patient_d_c,
-                             fun = rsd,
-                             binlist=c("lower_opensea","S_shore","S_shelf","Island","N_shelf","N_shore","upper_opensea"),probes_index = cgi_indexed_probes_cons)
-
-meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff")
-```
-
 
