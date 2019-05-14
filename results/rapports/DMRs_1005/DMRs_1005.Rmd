@@ -1,0 +1,67 @@
+---
+title: "tmp_DMR"
+author: "Jakobi Milan"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
+source("~/projects/supergenes/src/import_data.R")
+```
+
+
+# Per genes DMR methylation visualisation
+
+To obtain a satisfying view of genes DMRs, we firstly index probes per DMRs and then per genes based on a distance treshold, fixed here at 100k bp, giving a large window allowing the script to catch away DMRs.
+
+```{r}
+targeted_genes <- penda_superup_deregulated
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+
+if(!exists("dmrs_indexed_probes")){
+  if(!file.exists("~/projects/supergenes/data/RDS/dmrs_indexed_probes")){
+    dmrs_indexed_probes <- get_dmrs_indexed_probes()
+    saveRDS(dmrs_indexed_probes,"~/projects/supergenes/data/RDS/dmrs_indexed_probes")
+    }
+  dmrs_indexed_probes <- readRDS("~/projects/supergenes/data/RDS/dmrs_indexed_probes")
+}
+
+
+if(!exists("dmrs100k")){
+  if(!file.exists("~/projects/supergenes/data/RDS/dmrs100k")){
+    dmrs100k <- get_feat_indexed_DMRs(features, DMRtable = DMR_table)
+    saveRDS(dmrs100k,"~/projects/supergenes/data/RDS/dmrs100k")
+    }
+  dmrs100k <- readRDS("~/projects/supergenes/data/RDS/dmrs100k")
+}
+  
+```
+
+
+```{r}
+table(sapply(dmrs100k, length))
+barplot(table(sapply(dmrs100k, length)))
+```
+
+
+Even with a 100k large window, almost half of our genes do not have DMRs indexed, and 25% have only one, which is a serious problem :
+with such a few count of DMRs indexed per genes, it is impossible to distinguish a consistent pattern and to establish relevant hypothesis.
+
+Once the indexing done, we can vizualise, with a `plot_gene_dmr` function :
+
+```{r}
+plot_genes_dmr("PKMYT1")
+plot_genes_dmr("CDT1")
+plot_genes_dmr("ESPL1")
+```
+
+The color gradient used is defined by the `breaks` object : from 0 to 0.33, a gradient of cyan is used, from 0.34 to 0.66 is used a black gradient and from 0.66 to 1 is used a red gradient. The function also returns the table of values used to plot the heatmap, giving DMRs names and a more precise overview.
+
+
+

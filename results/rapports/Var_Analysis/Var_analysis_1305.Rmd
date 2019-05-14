@@ -1,0 +1,102 @@
+---
+title: "Variability analysis"
+author: "Jakobi Milan"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
+source("~/projects/supergenes/src/import_data.R")
+```
+
+
+# Foreword
+
+This vignette is based on a different approach : instead of focusing on genes features, we are here interested on probes itselves, more particulary on their variability.
+
+# Variability plot
+
+We introduce here a `variability plot` taking as input the list of targeted genes (eg : superup deregulated genes), the data for both tumoral and healthy tissues (splitted), the probes platform, the window used for indexing probes (it does use `get_features`) and any options the user wants to pass in the plot function.
+
+```{r}
+variability_plot<- function(targeted_genes = penda_superup_deregulated,
+                            meth_tumoral_data = meth_tumoral,
+                            meth_healthy_data = meth_normal,
+                            meth_platform = meth_lusc$platform,
+                            window = c(2500,2500),
+                            ...)
+{
+  
+  
+  ## Data manipulation
+  
+  features <- get_features(targeted_genes, study = trscr_lusc, up_str = window[2], dwn_str = window[1])
+  meth_tumoral_no_sex_chr <- meth_tumoral_data[intersect(rownames(meth_platform[which(meth_platform[,1] != "chrX"
+                                                                                      & meth_platform[,1] != "chrY"),]),
+                                                         rownames(meth_tumoral_data)),]
+  meth_healthy_no_sex_chr <- meth_healthy_data[intersect(rownames(meth_platform[which(meth_platform[,1] != "chrX"
+                                                                                      & meth_platform[,1] != "chrY"),]),
+                                                         rownames(meth_healthy_data)),]
+  
+  healthy_of_interest <- meth_healthy_no_sex_chr[intersect(unique(unlist(feat_indexed_probes)),rownames(meth_healthy_no_sex_chr)),]
+  tumoral_of_interest <- meth_tumoral_no_sex_chr[intersect(unique(unlist(feat_indexed_probes)),rownames(meth_tumoral_no_sex_chr)),]
+  
+  ## Get values
+  
+  sd_tumoral <-apply(tumoral_of_interest,1,sd,na.rm=T)
+  mean_tumoral <- apply(tumoral_of_interest,1,mean,na.rm=T)
+  rsd_tumoral <- apply(tumoral_of_interest,1,rsd,na.rm=T)
+  
+  
+  sd_healthy<- apply(healthy_of_interest,1,sd,na.rm=T)
+  mean_healthy<-apply(healthy_of_interest,1,mean,na.rm=T)
+  rsd_healthy <- apply(healthy_of_interest,1,rsd,na.rm=T)
+  
+  ## Plot
+  
+  plot(mean_healthy,
+       sd_healthy,
+       col="blue",
+       ylim=c(0,max(c(max(sd_healthy,na.rm=T),max(sd_tumoral,na.rm=T)))+0.05),
+       xlab = paste0("mean per probe","\n","(n probes = ",length(sd_healthy),"  window : ","[",window[1],",",window[2],"]"," )"),
+       ylab = "sd per probe",
+       ...)
+  
+  points(mean_tumoral,sd_tumoral,col="red")
+  
+  abline(v = c(mean(mean_healthy,na.rm=T),mean(mean_tumoral,na.rm=T)),col=c("blue","red"),lty = 3)
+  abline(h = c(mean(sd_healthy,na.rm=T),mean(sd_tumoral,na.rm=T)),col=c("blue","red"),lty = 3)
+  
+  arrows(mean_healthy,sd_healthy,mean_tumoral,sd_tumoral,
+         length=0.1,
+         lwd=0.3)
+  
+  legend("topright",
+         col=c("blue","red"),
+         legend=c("mean value healthy tissues","mean value tumoral tissues"),
+         lty = 3)
+        
+  
+  ## get a table to return for further investigation 
+  
+  ret <- cbind(mean_healthy,sd_healthy,rsd_healthy,mean_tumoral,sd_tumoral,rsd_tumoral)
+  
+  return(ret)
+  
+  
+}
+
+```
+
+```{r}
+variability_plot(penda_superup_deregulated,main = "Superup genes")
+variability_plot(penda_superdown_deregulated,main = "Superdown genes")
+variability_plot(penda_superconserved,main = "Supercons genes")
+```
+

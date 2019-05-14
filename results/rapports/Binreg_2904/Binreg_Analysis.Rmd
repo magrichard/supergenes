@@ -1,0 +1,620 @@
+---
+title: "Binreg Analysis"
+author: "Jakobi Milan"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
+
+source("~/projects/supergenes/src/import_data.R")
+```
+
+# Foreword
+
+This vignette is the fourth procuded during my internship in TIMC-IMAG lab (BCM team). It is divided into two parts.
+The first one is the visualization of transcription along with heatmap of selected_genes closests DMRs ( window = 100k). The second one offer a new physical gene partition to analyze methylation.
+
+# Updated genes expression profile 
+
+We first divided our genes into 6 bins (-2500,-1500,-500,TSS,+500,+1500,+2500) to overview methylation measures over it. Then, was proposed a second approach by dividing genes into biological regions such as exons, introns etc. The following work flow logically from it : downstream the TSS, the biological regions approach is conserved. Upstream the TSS, the gene is separated into 3 bins : -2500:-1500, -1500:-500 and -500:TSS, to refine our vizualisation.
+
+
+## Plot per genes
+
+```{r include=FALSE}
+targeted_genes <- penda_superup_deregulated
+features <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+```
+
+
+Here are some outputs of a `plot_binreg` function. For clarity, the large source code is not given here and is available on github. The examples plots are the same as used in the DMRs vignette on purpose.
+
+```{r echo=FALSE}
+plot_binreg("OTX1")
+plot_binreg("MCM2")
+plot_binreg("TROAP")
+```
+
+As you mate note, the closest region to the TSS is sometimes overlapping with the TSS closest bin. It can lead to index a probe in both. This overlap is on purpose since border_indexs of biological regions can be blurred, i thought it was smarter to risk some noise than determine for good the matter.
+
+# Wide database heatmaps (ordered by mean of means on healthy tissues)
+
+## Heatmaps superup
+
+We first define a `get_indexed_binreg` indexing probes as shown in previous plots.
+
+
+We can now repeat our usual pipeline to visualize obtained results. It is noticeable that Rsd heatmap ( relative squared error), defined as $\frac{\sigma}{| \mu |} \in [0,+\infty[$, is not well really informative because of its limits properties which are hard to deal with in a algorithmic way.
+
+
+
+### Healthy tissues
+
+
+```{r}
+feat_ind <- get_indexed_binreg()
+map_binreg<-reduce_map(feat_ind,c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+means_per_regions_per_genes_per_patient_h<- reduce_rows(meth_normal,map_binreg, mean ,na.rm=T)
+means_h <- subset_vals_per_bins(data = meth_normal,
+                              values_per_patient = means_per_regions_per_genes_per_patient_h,
+                              fun = mean,
+                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+
+order_index <- order(apply(means_h,1,mean,na.rm=T))
+
+meth_heatmap(means_h, main = "mean of means superup/healthy",order_index = order_index)
+
+```
+
+```{r}
+sd_per_regions_per_genes_per_patient_h <- reduce_rows(meth_normal,map_binreg, sd ,na.rm=T)
+sds_h <- subset_vals_per_bins(data = meth_normal,
+                            values_per_patient = sd_per_regions_per_genes_per_patient_h,
+                            fun = sd,
+                            binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+meth_heatmap(sds_h, main = "mean of sd superup/healthy",order_index = order_index)
+
+```
+
+```{r}
+rsd_per_regions_per_genes_per_patient_h <- reduce_rows(meth_normal,map_binreg, rsd ,na.rm=T)
+rsds_h <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_h,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order_index = order_index)
+```
+
+
+### Tumoral tissues
+
+```{r}
+means_per_regions_per_genes_per_patient_t <- reduce_rows(meth_tumoral,map_binreg, mean ,na.rm=T)
+means_t <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = means_per_regions_per_genes_per_patient_t,
+                             fun = mean,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+
+meth_heatmap(means_t, main = "mean of means superup/tumoral",order_index = order_index)
+```
+
+
+```{r}
+sd_per_regions_per_genes_per_patient_t <- reduce_rows(meth_tumoral,map_binreg, sd ,na.rm=T)
+sds_t <- subset_vals_per_bins(data = meth_tumoral,
+                              values_per_patient = sd_per_regions_per_genes_per_patient_t,
+                              fun = sd,
+                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order_index = order_index)
+```
+
+```{r}
+rsd_per_regions_per_genes_per_patient_t <- reduce_rows(meth_tumoral,map_binreg, rsd ,na.rm=T)
+rsds_t <- subset_vals_per_bins(data = meth_tumoral,
+                            values_per_patient = rsd_per_regions_per_genes_per_patient_t,
+                            fun = rsd,
+                            binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order_index = order_index)
+```
+
+### Boxplots
+
+```{r}
+boxplot_res(means_h,means_t)
+boxplot_res(sds_h,sds_t)
+boxplot_res(rsds_h,rsds_t)
+```
+
+### Differential values
+
+
+```{r include=FALSE}
+meth_diff <- get_differential_values(meth_tumoral,meth_normal)
+```
+
+
+
+```{r}
+means_per_regions_per_genes_per_patient_d<- reduce_rows(meth_diff,map_binreg, mean ,na.rm=T)
+means_d <- subset_vals_per_bins(data = meth_diff,
+                              values_per_patient = means_per_regions_per_genes_per_patient_d,
+                              fun = mean,
+                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+
+meth_heatmap(means_d, main = "mean of means superup/differential",order_index = order_index)
+```
+
+```{r}
+sd_per_regions_per_genes_per_patient_d <- reduce_rows(meth_diff,map_binreg, sd ,na.rm=T)
+sds_d <- subset_vals_per_bins(data = meth_diff,
+                            values_per_patient = sd_per_regions_per_genes_per_patient_d,
+                            fun = sd,
+                            binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+meth_heatmap(sds_d, main = "mean of sd superup/differential",order_index = order_index)
+
+```
+
+```{r}
+rsd_per_regions_per_genes_per_patient_d <- reduce_rows(meth_diff,map_binreg, rsd ,na.rm=T)
+rsds_d <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_d,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order_index = order_index)
+```
+
+
+## Heatmaps superdown
+
+
+```{r include=FALSE}
+features_down <- get_features(penda_superdown_deregulated, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_ind_down <- get_indexed_binreg(features_list = features_down)
+map_binreg_down<-reduce_map(feat_ind_down,c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+```
+
+
+### Healthy tissues
+
+```{r echo=FALSE}
+means_per_regions_per_genes_per_patient_h_d <- reduce_rows(meth_normal,map_binreg_down, mean ,na.rm=T)
+means_h_d <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = means_per_regions_per_genes_per_patient_h_d,
+                             fun = mean,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+order_index <- order(apply(means_h_d,1,mean,na.rm=T))
+
+meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order_index = order_index)
+
+```
+
+
+```{r echo=FALSE}
+sd_per_regions_per_genes_per_patient_h_d <- reduce_rows(meth_normal,map_binreg_down, sd ,na.rm=T)
+sd_h_d <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = sd_per_regions_per_genes_per_patient_h_d,
+                             fun = sd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order_index = order_index)
+```
+
+
+```{r echo=FALSE}
+rsd_per_regions_per_genes_per_patient_h_d <- reduce_rows(meth_normal,map_binreg_down, sd ,na.rm=T)
+rsds_h_d <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_h_d,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order_index = order_index)
+```
+
+### Tumoral tissues
+
+```{r echo=FALSE}
+means_per_regions_per_genes_per_patient_t_d <- reduce_rows(meth_tumoral,map_binreg_down, mean ,na.rm=T)
+means_t_d <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = means_per_regions_per_genes_per_patient_t_d,
+                             fun = mean,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order_index = order_index)
+
+```
+
+
+```{r echo=FALSE}
+sd_per_regions_per_genes_per_patient_t_d <- reduce_rows(meth_tumoral,map_binreg_down, sd ,na.rm=T)
+sd_t_d <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = sd_per_regions_per_genes_per_patient_t_d,
+                             fun = sd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order_index = order_index)
+```
+
+
+```{r echo=FALSE}
+rsd_per_regions_per_genes_per_patient_t_d <- reduce_rows(meth_tumoral,map_binreg_down, sd ,na.rm=T)
+rsds_t_d <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_t_d,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order_index = order_index)
+```
+
+
+### Boxplots
+
+```{r echo=FALSE}
+boxplot_res(means_h_d,means_t_d)
+boxplot_res(sd_h_d,sd_t_d)
+boxplot_res(rsds_h_d,rsds_t_d)
+```
+
+
+### Differential values
+
+
+```{r echo=FALSE}
+means_per_regions_per_genes_per_patient_d_d <- reduce_rows(meth_diff,map_binreg_down, mean ,na.rm=T)
+means_d_d <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = means_per_regions_per_genes_per_patient_d_d,
+                             fun = mean,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(means_d_d, main = "mean of means superdown/diff",order_index = order_index)
+
+```
+
+
+```{r echo=FALSE}
+sd_per_regions_per_genes_per_patient_d_d <- reduce_rows(meth_diff,map_binreg_down, sd ,na.rm=T)
+sd_d_d <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = sd_per_regions_per_genes_per_patient_d_d,
+                             fun = sd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order_index = order_index)
+```
+
+
+```{r echo=FALSE}
+rsd_per_regions_per_genes_per_patient_d_d <- reduce_rows(meth_diff,map_binreg_down, sd ,na.rm=T)
+rsds_d_d <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_d_d,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
+
+meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order_index = order_index)
+```
+
+
+
+## Heatmap superconserved
+
+```{r include=FALSE}
+targeted_genes <- penda_superconserved
+features_cons <- get_features(targeted_genes, study = trscr_lusc, up_str = 7500, dwn_str = 7500)
+feat_ind_cons <- get_indexed_binreg(features_list = features_cons)
+map_binreg_cons<-reduce_map(feat_ind_cons,c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
+```
+
+
+
+### Healthy tissues
+
+
+```{r echo=FALSE}
+means_per_regions_per_genes_per_patient_h_c <- reduce_rows(meth_normal,map_binreg_cons, mean ,na.rm=T)
+means_h_c <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = means_per_regions_per_genes_per_patient_h_c,
+                             fun = mean,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+order_index <- order(apply(means_h_c,1,mean,na.rm=T))
+
+meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order_index = order_index)
+
+```
+
+
+```{r echo=FALSE}
+sd_per_regions_per_genes_per_patient_h_c <- reduce_rows(meth_normal,map_binreg_cons, sd ,na.rm=T)
+sd_h_c <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = sd_per_regions_per_genes_per_patient_h_c,
+                             fun = sd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order_index = order_index)
+```
+
+
+```{r echo=FALSE}
+rsd_per_regions_per_genes_per_patient_h_c <- reduce_rows(meth_normal,map_binreg_cons, sd ,na.rm=T)
+rsds_h_c <- subset_vals_per_bins(data = meth_normal,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_h_c,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order_index = order_index)
+```
+
+
+### Tumoral tissues
+
+
+```{r echo=FALSE}
+means_per_regions_per_genes_per_patient_t_c <- reduce_rows(meth_tumoral,map_binreg_cons, mean ,na.rm=T)
+means_t_c <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = means_per_regions_per_genes_per_patient_t_c,
+                             fun = mean,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order_index = order_index)
+
+```
+
+
+```{r echo=FALSE}
+sd_per_regions_per_genes_per_patient_t_c <- reduce_rows(meth_tumoral,map_binreg_cons, sd ,na.rm=T)
+sd_t_c <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = sd_per_regions_per_genes_per_patient_t_c,
+                             fun = sd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order_index = order_index)
+```
+
+
+```{r echo=FALSE}
+rsd_per_regions_per_genes_per_patient_t_c <- reduce_rows(meth_tumoral,map_binreg_cons, sd ,na.rm=T)
+rsds_t_c <- subset_vals_per_bins(data = meth_tumoral,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_t_c,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order_index = order_index)
+```
+
+
+### Boxplots
+
+```{r echo=FALSE}
+boxplot_res(means_h_c,means_t_c)
+boxplot_res(sd_h_c,sd_t_c)
+boxplot_res(rsds_h_c,rsds_t_c)
+```
+
+### Differential values
+
+```{r echo=FALSE}
+means_per_regions_per_genes_per_patient_d_c <- reduce_rows(meth_diff,map_binreg_cons, mean ,na.rm=T)
+means_d_c <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = means_per_regions_per_genes_per_patient_d_c,
+                             fun = mean,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(means_d_c, main = "mean of means supercons/diff",order_index = order_index)
+
+```
+
+
+```{r echo=FALSE}
+sd_per_regions_per_genes_per_patient_d_c <- reduce_rows(meth_diff,map_binreg_cons, sd ,na.rm=T)
+sd_d_c <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = sd_per_regions_per_genes_per_patient_d_c,
+                             fun = sd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order_index = order_index)
+```
+
+
+```{r echo=FALSE}
+rsd_per_regions_per_genes_per_patient_d_c <- reduce_rows(meth_diff,map_binreg_cons, sd ,na.rm=T)
+rsds_d_c <- subset_vals_per_bins(data = meth_diff,
+                             values_per_patient = rsd_per_regions_per_genes_per_patient_d_c,
+                             fun = rsd,
+                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
+
+meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order_index = order_index)
+```
+
+# Ordered by mean on Intron
+
+## Superup
+
+
+### Healthy tissues
+
+```{r}
+order_index <- order(means_h[,6])
+meth_heatmap(means_h, main = "mean of means superup/healthy",order_index=order_index)
+meth_heatmap(sds_h, main = "mean of sd superup/healthy", order_index=order_index)
+meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order_index=order_index)
+```
+
+### Tumoral tissues
+
+```{r}
+meth_heatmap(means_t, main = "mean of means superup/tumoral",order_index=order_index)
+meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order_index=order_index)
+meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order_index=order_index)
+```
+
+### Differential
+
+```{r}
+meth_heatmap(means_d, main = "mean of means superup/differential",order_index=order_index)
+meth_heatmap(sds_d, main = "mean of sd superup/differential",order_index=order_index)
+meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order_index=order_index)
+```
+
+
+## Superdown
+
+
+
+### Healthy tissues
+
+```{r}
+order_index <- order(means_h_d[,6])
+meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order_index=order_index)
+meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order_index=order_index)
+meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order_index=order_index)
+```
+
+### Tumoral tissues
+
+```{r}
+meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order_index=order_index)
+meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order_index=order_index)
+```
+
+### Differential
+
+```{r}
+meth_heatmap(means_d_d, main = "mean of means superdown/diff",order_index=order_index)
+meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order_index=order_index)
+meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order_index=order_index)
+```
+
+
+## Supercons
+
+
+### Healthy tissues
+
+```{r}
+order_index <- order(means_h_c[,6])
+meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order_index=order_index)
+meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order_index=order_index)
+meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order_index=order_index)
+```
+
+### Tumoral tissues
+
+```{r}
+meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order_index=order_index)
+meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order_index=order_index)
+```
+
+### Differential
+
+```{r}
+meth_heatmap(means_d_c, main = "mean of means supercons/diff",order_index=order_index)
+meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order_index=order_index)
+meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order_index=order_index)
+```
+
+# order_indexed by bin3 (closest one to the TSS)
+
+## Superup
+
+### Healthy tissues
+
+```{r}
+order_index <- order(means_h[,3])
+meth_heatmap(means_h, main = "mean of means superup/healthy",order_index=order_index)
+meth_heatmap(sds_h, main = "mean of sd superup/healthy", order_index=order_index)
+meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order_index=order_index)
+```
+
+### Tumoral tissues
+
+```{r}
+meth_heatmap(means_t, main = "mean of means superup/tumoral",order_index=order_index)
+meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order_index=order_index)
+meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order_index=order_index)
+```
+
+### Differential
+
+```{r}
+meth_heatmap(means_d, main = "mean of means superup/differential",order_index=order_index)
+meth_heatmap(sds_d, main = "mean of sd superup/differential",order_index=order_index)
+meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order_index=order_index)
+```
+
+
+## Superdown
+
+### Healthy tissues
+
+```{r}
+order_index <- order(means_h_d[,3])
+meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order_index=order_index)
+meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order_index=order_index)
+meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order_index=order_index)
+```
+
+### Tumoral tissues
+
+```{r}
+meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order_index=order_index)
+meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order_index=order_index)
+```
+
+### Differential
+
+```{r}
+meth_heatmap(means_d_d, main = "mean of means superdown/diff",order_index=order_index)
+meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order_index=order_index)
+meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order_index=order_index)
+```
+
+
+## Supercons
+
+### Healthy tissues
+
+```{r}
+order_index <- order(means_h_c[,3])
+meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order_index=order_index)
+meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order_index=order_index)
+meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order_index=order_index)
+```
+
+### Tumoral tissues
+
+```{r}
+meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order_index=order_index)
+meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order_index=order_index)
+```
+
+### Differential
+
+```{r}
+meth_heatmap(means_d_c, main = "mean of means supercons/diff",order_index=order_index)
+meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order_index=order_index)
+meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order_index=order_index)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

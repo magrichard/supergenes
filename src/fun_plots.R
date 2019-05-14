@@ -919,14 +919,15 @@ get_cgi_mat<-function(features_list = features,
   
 }
 
-
-plot_genes_dmr <- function(selected_gene = "OTX1",
-                             expr_data = trscr_lusc$data,
-                             meth_study = meth_lusc,
-                             dmrs_table = DMR_table,
-                             DMR_map  = dmrs100k,
-                             genes_list = features,
-                             epic850k = epic){
+plot_genes_dmr <- function(selected_gene = "CDT1",
+                           expr_data = trscr_lusc$data,
+                           meth_study = meth_lusc,
+                           dmrs_table = DMR_table,
+                           DMR_map  = dmrs100k,
+                           genes_list = features,
+                           epic850k = epic){
+  
+  # Data manipulation chunk
   
   ## Get DMRs & probes on the genes chromosome
   
@@ -972,16 +973,41 @@ plot_genes_dmr <- function(selected_gene = "OTX1",
   methvals_of_interest <- meth_values[intersect(rownames(sub_epic),rownames(meth_values)),]
   sorted_vals <- methvals_of_interest[,order(match(colnames(methvals_of_interest),names(expr_values)))]
   
+  ## Inserting NA's rows at TSS +/- 2500 borders for visualisation on heatmap
+  
+  TSS <- genes_list[selected_gene,"TSS"]
+  
+  upstream_probes <- intersect(rownames(sub_epic[which(sub_epic[,"end"]< TSS-2500),]),rownames(sorted_vals))
+  tss_probes <- intersect(rownames(sorted_vals),rownames(probes_around_TSS))
+  downstream_probes <- intersect(rownames(sub_epic[which(sub_epic[,"start"]> TSS+2500),]),rownames(sorted_vals))
   
   
-  cols1 <- epimedtools::monitored_apply(t(t(names(expr_values))),1, function(i){
+  final_vals <- rbind(sorted_vals[upstream_probes,],
+                      rep(5,ncol(sorted_vals)),
+                      sorted_vals[tss_probes,],
+                      rep(5,ncol(sorted_vals)),
+                      sorted_vals[downstream_probes,])
+  
+  
+  
+  
+  
+  # Plotting chunk
+  
+  ## cols for expr plot
+  
+  cols1 <- apply(t(t(names(expr_values))),1, function(i){
     if(meth_study$exp_grp[i,14] == "tumoral"){col<- "red"}
     else {col<- "blue"}})
+  
+  
   
   print("Plotting...")
   
   layout(matrix(c(4,3,
                   1,2), 2, 2, byrow = TRUE))
+  
+  
   
   
   tmp = cbind(expr_values,1:length(expr_values))
@@ -994,10 +1020,13 @@ plot_genes_dmr <- function(selected_gene = "OTX1",
   
   
   colors=c("cyan", "black", "red")
-  cols = colorRampPalette(colors)(100)
-  breaks <- c(seq(0,0.33,length=35),seq(0.34,0.66,length=33),seq(0.67,1,length=33))
+  cols = c(colorRampPalette(colors)(100),"#ffff6f") ## add RGB value for TSS separator
   
-  image(sorted_vals,
+  ## 1 extra break for dummy column to graphically distinguish TSS bin
+  
+  breaks <- c(seq(0,0.33,length=35),seq(0.34,0.66,length=33),seq(0.67,1,length=33),5)
+  
+  image(final_vals,
         col=cols,
         breaks = breaks,
         axes=FALSE,
@@ -1006,7 +1035,7 @@ plot_genes_dmr <- function(selected_gene = "OTX1",
   mtext(paste(noquote(selected_gene),"DMRs vizualisation",sep= " "), outer=TRUE,  cex=2, line=-2)
   
   
-  #### xlim trick, only known by very few including myself & LAO TSEU ###
+  #### Handmade xlim trick, only known by very few including myself & Louis XIV ###
   
   TSS <- genes_list[selected_gene,"TSS"]
   lower_bound <- min(DMRs_of_interest[,"start"])-1000
@@ -1019,6 +1048,10 @@ plot_genes_dmr <- function(selected_gene = "OTX1",
   if(sum(TSS < DMRs_of_interest[,"end"]) == 0){
     upper_bound <- TSS+3000 
   }
+  
+  
+  ## cols for probes localisation : if the probe columns is full of NA, its pch will be a cross, a point otherwise
+  
   
   
   plot(sub_epic$start,rep(1.4,nrow(sub_epic)),
@@ -1051,16 +1084,94 @@ plot_genes_dmr <- function(selected_gene = "OTX1",
   
   plot(1,0,xaxt="n",yaxt="n",xlab="",ylab="",col="white")
   
-  legend("center",
-         c("tumoral","normal"),
+  legend("bottomleft",
+         c("tumoral","healthy"),
          xpd = TRUE,
          pch=20,
          col=c("red","blue"))
+  
+  legend("topright",
+         c("Hypo DMR","Hyper DMR","probes location"),
+         xpd = TRUE,
+         pch = c(15,15,19),
+         col=c("blue","red","black"))
+  
+  legend("bottomright",
+         "+/- 2500 bp around TSS",
+         xpd = TRUE,
+         pch = 15,
+         col="#ffff6f")
+  
   
   
   return(list(sorted_vals=sorted_vals,
               dmr_indexed_probes = probes_per_dmr,
               sub_epic = sub_epic))
+  
+  
+}
+
+
+################## Variability plot ######################
+
+
+
+variability_plot<- function(targeted_genes = penda_superup_deregulated,
+                            meth_tumoral_data = meth_tumoral,
+                            meth_healthy_data = meth_normal,
+                            meth_platform = meth_lusc$platform,
+                            window = c(2500,2500),
+                            ...)
+{
+  
+  
+  ## Data manipulation
+  
+  features <- get_features(targeted_genes, study = trscr_lusc, up_str = window[2], dwn_str = window[1])
+  meth_tumoral_no_sex_chr <- meth_tumoral_data[intersect(rownames(meth_platform[which(meth_platform[,1] != "chrX"
+                                                                                      & meth_platform[,1] != "chrY"),]),
+                                                         rownames(meth_tumoral_data)),]
+  meth_healthy_no_sex_chr <- meth_healthy_data[intersect(rownames(meth_platform[which(meth_platform[,1] != "chrX"
+                                                                                      & meth_platform[,1] != "chrY"),]),
+                                                         rownames(meth_healthy_data)),]
+  
+  healthy_of_interest <- meth_healthy_no_sex_chr[intersect(unique(unlist(feat_indexed_probes)),rownames(meth_healthy_no_sex_chr)),]
+  tumoral_of_interest <- meth_tumoral_no_sex_chr[intersect(unique(unlist(feat_indexed_probes)),rownames(meth_tumoral_no_sex_chr)),]
+  
+  ## Get values
+  
+  sd_tumoral <-apply(tumoral_of_interest,1,sd,na.rm=T)
+  mean_tumoral <- apply(tumoral_of_interest,1,mean,na.rm=T)
+  rsd_tumoral <- apply(tumoral_of_interest,1,rsd,na.rm=T)
+  
+  
+  sd_healthy<- apply(healthy_of_interest,1,sd,na.rm=T)
+  mean_healthy<-apply(healthy_of_interest,1,mean,na.rm=T)
+  rsd_healthy <- apply(healthy_of_interest,1,rsd,na.rm=T)
+  
+  ## Plot
+  
+  plot(mean_healthy,
+       sd_healthy,
+       col="blue",
+       ylim=c(0,max(c(max(sd_healthy,na.rm=T),max(sd_tumoral,na.rm=T)))),
+       xlab = paste0("mean per probe","\n","(n probes = ",length(sd_healthy),"  window : ","[",window[1],",",window[2],"]"," )"),
+       ylab = "sd per probe",
+       ...)
+  
+  points(mean_tumoral,sd_tumoral,col="red")
+  abline(v = c(mean(mean_healthy,na.rm=T),mean(mean_tumoral,na.rm=T)),col=c("blue","red"),lty = 3)
+  abline(h = c(mean(sd_healthy,na.rm=T),mean(sd_tumoral,na.rm=T)),col=c("blue","red"),lty = 3)
+  
+  arrows(mean_healthy,sd_healthy,mean_tumoral,sd_tumoral,
+         length=0.1,
+         lwd=0.3)
+  
+  ## get a table to return for further investigation 
+  
+  ret <- cbind(mean_healthy,sd_healthy,rsd_healthy,mean_tumoral,sd_tumoral,rsd_tumoral)
+  
+  return(ret)
   
   
 }

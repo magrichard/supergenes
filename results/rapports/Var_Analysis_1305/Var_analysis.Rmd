@@ -1,0 +1,183 @@
+---
+title: "Variability analysis"
+author: "Jakobi Milan"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=TRUE, results="hide", message=FALSE, warning = FALSE)
+source("~/projects/supergenes/src/import_data.R")
+```
+
+
+# Foreword
+
+This vignette is based on a different approach : instead of focusing on genes features, we are here interested on probes itselves, more particulary on their variability.
+
+# Variability plot
+
+We introduce here a `variability plot` taking as input the list of targeted genes (eg : superup deregulated genes), the data for both tumoral and healthy tissues (splitted), the probes platform, the window used for indexing probes (it does use `get_features`) and any options the user wants to pass in the plot function.
+
+```{r}
+variability_plot<- function(targeted_genes = penda_superup_deregulated,
+                            meth_tumoral_data = meth_tumoral,
+                            meth_healthy_data = meth_normal,
+                            meth_platform = meth_lusc$platform,
+                            window = c(2500,2500),
+                            ...)
+{
+  
+  
+  ## Data manipulation
+  
+  features <- get_features(targeted_genes, study = trscr_lusc, up_str = window[2], dwn_str = window[1])
+  meth_tumoral_no_sex_chr <- meth_tumoral_data[intersect(rownames(meth_platform[which(meth_platform[,1] != "chrX"
+                                                                                      & meth_platform[,1] != "chrY"),]),
+                                                         rownames(meth_tumoral_data)),]
+  meth_healthy_no_sex_chr <- meth_healthy_data[intersect(rownames(meth_platform[which(meth_platform[,1] != "chrX"
+                                                                                      & meth_platform[,1] != "chrY"),]),
+                                                         rownames(meth_healthy_data)),]
+  
+  healthy_of_interest <- meth_healthy_no_sex_chr[intersect(unique(unlist(feat_indexed_probes)),rownames(meth_healthy_no_sex_chr)),]
+  tumoral_of_interest <- meth_tumoral_no_sex_chr[intersect(unique(unlist(feat_indexed_probes)),rownames(meth_tumoral_no_sex_chr)),]
+  
+  ## Get values
+  
+  sd_tumoral <-apply(tumoral_of_interest,1,sd,na.rm=T)
+  mean_tumoral <- apply(tumoral_of_interest,1,mean,na.rm=T)
+  rsd_tumoral <- apply(tumoral_of_interest,1,rsd,na.rm=T)
+  
+  
+  sd_healthy<- apply(healthy_of_interest,1,sd,na.rm=T)
+  mean_healthy<-apply(healthy_of_interest,1,mean,na.rm=T)
+  rsd_healthy <- apply(healthy_of_interest,1,rsd,na.rm=T)
+  
+  ## Plot
+  
+  plot(mean_healthy,
+       sd_healthy,
+       col="blue",
+       ylim=c(0,max(c(max(sd_healthy,na.rm=T),max(sd_tumoral,na.rm=T)))+0.05),
+       xlab = paste0("mean per probe","\n","(n probes = ",length(sd_healthy),"  window : ","[",window[1],",",window[2],"]"," )"),
+       ylab = "sd per probe",
+       ...)
+  
+  points(mean_tumoral,sd_tumoral,col="red")
+  
+  abline(v = c(mean(mean_healthy,na.rm=T),mean(mean_tumoral,na.rm=T)),col=c("blue","red"),lty = 3)
+  abline(h = c(mean(sd_healthy,na.rm=T),mean(sd_tumoral,na.rm=T)),col=c("blue","red"),lty = 3)
+  
+  arrows(mean_healthy,sd_healthy,mean_tumoral,sd_tumoral,
+         length=0.1,
+         lwd=0.3)
+  
+  legend("topright",
+         col=c("blue","red"),
+         legend=c("mean value healthy tissues","mean value tumoral tissues"),
+         lty = 3)
+        
+  
+  ## get a table to return for further investigation 
+  
+  ret <- cbind(mean_healthy,sd_healthy,rsd_healthy,mean_tumoral,sd_tumoral,rsd_tumoral)
+  
+  return(ret)
+  
+  
+}
+
+```
+
+```{r}
+vals_superup<-variability_plot(penda_superup_deregulated,main = "Superup genes probes")
+vals_superdown<-variability_plot(penda_superdown_deregulated,main = "Superdown genes probes")
+vals_supercons<-variability_plot(penda_superconserved,main = "Supercons genes probes")
+```
+
+# Variability split plot
+
+Once we visualized variability for each set of genes associated probes, i thought it was interesting to split the plot into two pannel to differentiate methylated and unmethylated probes.
+
+```{r}
+variability_split_plot <- function(variability_values = vals,
+                                   split_tresholds = c(0.5,0.5),
+                                   main = "Superup genes"){
+
+
+  
+
+    vals_lower <- variability_values[which(variability_values[,1] < split_treshold[1]),]
+    vals_upper <- variability_values[which(variability_values[,1] >= split_treshold[2]),]
+
+
+  
+  par(mfrow=c(1,2))
+  
+  plot(vals_lower[,1],
+       vals_lower[,2],
+       col="blue",
+       ylim=c(0,max(c(max(variability_values[,2],na.rm=T),max(variability_values[,5],na.rm=T)))),
+       xlab = paste0("mean per probe","\n","(n probes = ",length(vals_lower[,2]),")"),
+       ylab = "sd per probe")
+  
+  points(vals_lower[,4],vals_lower[,5],col="red")
+  abline(v = c(mean(vals_lower[,1],na.rm=T),mean(vals_lower[,4],na.rm=T)),col=c("blue","red"),lty = 3)
+  abline(h = c(mean(vals_lower[,2],na.rm=T),mean(vals_lower[,5],na.rm=T)),col=c("blue","red"),lty = 3)
+  
+  arrows(vals_lower[,1],vals_lower[,2],vals_lower[,4],vals_lower[,5],
+         length=0.1,
+         lwd=0.3)
+  
+  
+  
+  plot(vals_upper[,1],
+       vals_upper[,2],
+       col="blue",
+       ylim=c(0,max(c(max(variability_values[,2],na.rm=T),max(variability_values[,5],na.rm=T)))),
+       xlab = paste0("mean per probe","\n","(n probes = ",length(vals_upper[,2]),")"),
+       ylab = "sd per probe")
+  
+  points(vals_upper[,4],vals_upper[,5],col="red")
+  
+  abline(v = c(mean(vals_upper[,1],na.rm=T),mean(vals_upper[,4],na.rm=T)),col=c("blue","red"),lty = 3)
+  abline(h = c(mean(vals_upper[,2],na.rm=T),mean(vals_upper[,5],na.rm=T)),col=c("blue","red"),lty = 3)
+  
+  arrows(vals_upper[,1],vals_upper[,2],vals_upper[,4],vals_upper[,5],
+         length=0.1,
+         lwd=0.3)
+  
+  mtext(main, line=-2, side=3, outer=TRUE, cex=2)
+  
+}
+```
+
+
+```{r}
+variability_split_plot(vals_superup,main = "Superup genes probes")
+variability_split_plot(vals_superdown,main = "Superdown genes probes")
+variability_split_plot(vals_supercons,main = "Supercons genes probes")
+```
+
+
+# Using a larger width to index probes
+
+We see a difference of behavior between methylated superup probes and unmethylated superup probes. But since there is less probes, it could be not significant. Trying to capture more probes can be interesting to get better asymptotic properties.
+
+```{r}
+vals_superup<-variability_plot(penda_superup_deregulated,main = "Superup genes probes",window = c(5000,5000))
+vals_superdown<-variability_plot(penda_superdown_deregulated,main = "Superdown genes probes",window = c(5000,5000))
+vals_supercons<-variability_plot(penda_superconserved,main = "Supercons genes probes", window = c(5000,5000))
+```
+
+```{r}
+variability_split_plot(vals_superup,main = "Superup genes probes")
+variability_split_plot(vals_superdown,main = "Superdown genes probes")
+variability_split_plot(vals_supercons,main = "Supercons genes probes")
+```
+

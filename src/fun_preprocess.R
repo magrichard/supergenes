@@ -1,7 +1,13 @@
 ###################################  Getting probes features for targeted type of genes ( superdown, superup...) and type of lung cancer #######################
 
 
-get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, nb_probe_min = 1) { 
+get_features <- function(targeted_genes,
+                         study,
+                         up_str = 2500,
+                         dwn_str = 2500,
+                         nb_probe_min = 1,
+                         epimed = epic) { 
+  
   print(noquote("Creating a list of features..."))
   features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
   
@@ -22,9 +28,9 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
   pf_pos_colname <- "start"
   chrs <- unique(features[, 1])
   chrs_indexed_epic <- lapply(chrs, function(chr) {
-    print(chr)
-    idx <- rownames(epic)[epic[[pf_chr_colname]] %in% chr]
-    ret <- epic[idx, ]
+    print(paste0("Indexing epic data per chromosome : ",as.character(chr)," ..."))
+    idx <- rownames(epimed)[epimed[[pf_chr_colname]] %in% chr]
+    ret <- epimed[idx, ]
     return(ret)
   })
   names(chrs_indexed_epic) <- chrs
@@ -64,11 +70,17 @@ get_features <- function(targeted_genes, study, up_str = 2500, dwn_str = 2500, n
 
 ############################### get_features_bins : same as prior + indexing probes per bins #####################
 
-get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500, dwn_str = 2500, nb_probe_min = 1, ...) { #### In my uses-case, 1 for LUAD & 2 for LUSC
+get_features_bins <- function(targeted_genes,
+                              study = trscr_lusc,
+                              up_str = 2500,
+                              dwn_str = 2500,
+                              nb_probe_min = 1,
+                              epimed = epic){
+  
+  
+  
   print("Creating a list of features...")
   features <- study$platform[intersect(rownames(study$platform), targeted_genes), ]
-  
-  
   
   
   print(noquote("Indexing probes by features and by bins..."))
@@ -78,8 +90,8 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
   chrs <- unique(features[, 1])
   chrs_indexed_epic <- lapply(chrs, function(chr) {
     print(chr)
-    idx <- rownames(epic)[epic[[pf_chr_colname]] %in% chr]
-    ret <- epic[idx, ]
+    idx <- rownames(epimed)[epimed[[pf_chr_colname]] %in% chr]
+    ret <- epimed[idx, ]
     return(ret)
   })
   names(chrs_indexed_epic) <- chrs
@@ -165,7 +177,15 @@ get_features_bins <- function(targeted_genes, study = trscr_lusc, up_str = 2500,
     whole_feature <- tmp_probes <- dmprocr::get_probe_names(gene, meth_platform, pf_chr_colname, pf_pos_colname, up_str, dwn_str)
     
     
-    ret <- list(sub_epic = sub_epic, whole_feature = whole_feature, bin1 = bin1, bin2 = bin2, bin3 = bin3, bin4 = bin4, bin5 = bin5, bin6 = bin6)
+    ret <- list(sub_epic = sub_epic,
+                whole_feature = whole_feature,
+                bin1 = bin1,
+                bin2 = bin2,
+                bin3 = bin3,
+                bin4 = bin4, 
+                bin5 = bin5,
+                bin6 = bin6)
+    
     return(ret)
     
     

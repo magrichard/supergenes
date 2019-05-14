@@ -42,7 +42,7 @@ plot_binreg("MCM2")
 plot_binreg("TROAP")
 ```
 
-As you mate note, the closest region to the TSS is sometimes overlapping with the TSS closest bin. It can lead to index a probe in both. This overlap is on purpose since borders of biological regions can be blurred, i thought it was smarter to risk some noise than determine for good the matter.
+As you mate note, the closest region to the TSS is sometimes overlapping with the TSS closest bin. It can lead to index a probe in both. This overlap is on purpose since border_indexs of biological regions can be blurred, i thought it was smarter to risk some noise than determine for good the matter.
 
 # Wide database heatmaps
 
@@ -68,7 +68,6 @@ means_h <- subset_vals_per_bins(data = meth_normal,
                               binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
 
 meth_heatmap(means_h, main = "mean of means superup/healthy")
-order <- order(means_h[,"overall"])
 
 ```
 
@@ -78,7 +77,7 @@ sds_h <- subset_vals_per_bins(data = meth_normal,
                             values_per_patient = sd_per_regions_per_genes_per_patient_h,
                             fun = sd,
                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
-meth_heatmap(sds_h, main = "mean of sd superup/healthy", order=order)
+meth_heatmap(sds_h, main = "mean of sd superup/healthy")
 
 ```
 
@@ -88,7 +87,7 @@ rsds_h <- subset_vals_per_bins(data = meth_normal,
                              values_per_patient = rsd_per_regions_per_genes_per_patient_h,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
-meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order=order)
+meth_heatmap(rsds_h, main = "mean of rsd superup/healthy")
 ```
 
 
@@ -101,7 +100,7 @@ means_t <- subset_vals_per_bins(data = meth_tumoral,
                              fun = mean,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
 
-meth_heatmap(means_t, main = "mean of means superup/tumoral",order=order)
+meth_heatmap(means_t, main = "mean of means superup/tumoral")
 ```
 
 
@@ -111,7 +110,7 @@ sds_t <- subset_vals_per_bins(data = meth_tumoral,
                               values_per_patient = sd_per_regions_per_genes_per_patient_t,
                               fun = sd,
                               binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
-meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order=order)
+meth_heatmap(sds_t, main = "mean of sd superup/tumoral")
 ```
 
 ```{r}
@@ -120,7 +119,7 @@ rsds_t <- subset_vals_per_bins(data = meth_tumoral,
                             values_per_patient = rsd_per_regions_per_genes_per_patient_t,
                             fun = rsd,
                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
-meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order=order)
+meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral")
 ```
 
 ### Boxplots
@@ -147,7 +146,7 @@ means_d <- subset_vals_per_bins(data = meth_diff,
                               fun = mean,
                               binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
 
-meth_heatmap(means_d, main = "mean of means superup/differential",order=order)
+meth_heatmap(means_d, main = "mean of means superup/differential")
 ```
 
 ```{r}
@@ -156,7 +155,7 @@ sds_d <- subset_vals_per_bins(data = meth_diff,
                             values_per_patient = sd_per_regions_per_genes_per_patient_d,
                             fun = sd,
                             binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
-meth_heatmap(sds_d, main = "mean of sd superup/differential",order=order)
+meth_heatmap(sds_d, main = "mean of sd superup/differential")
 
 ```
 
@@ -166,7 +165,7 @@ rsds_d <- subset_vals_per_bins(data = meth_diff,
                              values_per_patient = rsd_per_regions_per_genes_per_patient_d,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"))
-meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order=order)
+meth_heatmap(rsds_d, main = "mean of rsd superup/differential")
 ```
 
 
@@ -189,8 +188,7 @@ means_h_d <- subset_vals_per_bins(data = meth_normal,
                              fun = mean,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-order <- order(means_h_d[,"overall"])
-meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order=order)
+meth_heatmap(means_h_d, main = "mean of means superdown/healthy")
 
 ```
 
@@ -202,7 +200,7 @@ sd_h_d <- subset_vals_per_bins(data = meth_normal,
                              fun = sd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order=order)
+meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy")
 ```
 
 
@@ -213,7 +211,7 @@ rsds_h_d <- subset_vals_per_bins(data = meth_normal,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order=order)
+meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy")
 ```
 
 ### Tumoral tissues
@@ -225,7 +223,7 @@ means_t_d <- subset_vals_per_bins(data = meth_tumoral,
                              fun = mean,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order=order)
+meth_heatmap(means_t_d, main = "mean of means superdown/tumoral")
 
 ```
 
@@ -237,7 +235,7 @@ sd_t_d <- subset_vals_per_bins(data = meth_tumoral,
                              fun = sd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order=order)
+meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral")
 ```
 
 
@@ -248,7 +246,7 @@ rsds_t_d <- subset_vals_per_bins(data = meth_tumoral,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order=order)
+meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral")
 ```
 
 
@@ -271,7 +269,7 @@ means_d_d <- subset_vals_per_bins(data = meth_diff,
                              fun = mean,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(means_d_d, main = "mean of means superdown/diff",order=order)
+meth_heatmap(means_d_d, main = "mean of means superdown/diff")
 
 ```
 
@@ -283,7 +281,7 @@ sd_d_d <- subset_vals_per_bins(data = meth_diff,
                              fun = sd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order=order)
+meth_heatmap(sd_d_d, main = "mean of sd superdown/diff")
 ```
 
 
@@ -294,7 +292,7 @@ rsds_d_d <- subset_vals_per_bins(data = meth_diff,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_down)
 
-meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order=order)
+meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff")
 ```
 
 
@@ -319,8 +317,7 @@ means_h_c <- subset_vals_per_bins(data = meth_normal,
                              values_per_patient = means_per_regions_per_genes_per_patient_h_c,
                              fun = mean,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
-order <- order(means_h_c[,"overall"])
-meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order=order)
+meth_heatmap(means_h_c, main = "mean of means supercons/healthy")
 
 ```
 
@@ -332,7 +329,7 @@ sd_h_c <- subset_vals_per_bins(data = meth_normal,
                              fun = sd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order=order)
+meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy")
 ```
 
 
@@ -343,7 +340,7 @@ rsds_h_c <- subset_vals_per_bins(data = meth_normal,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order=order)
+meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy")
 ```
 
 
@@ -357,7 +354,7 @@ means_t_c <- subset_vals_per_bins(data = meth_tumoral,
                              fun = mean,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order=order)
+meth_heatmap(means_t_c, main = "mean of means supercons/tumoral")
 
 ```
 
@@ -369,7 +366,7 @@ sd_t_c <- subset_vals_per_bins(data = meth_tumoral,
                              fun = sd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order=order)
+meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral")
 ```
 
 
@@ -380,7 +377,7 @@ rsds_t_c <- subset_vals_per_bins(data = meth_tumoral,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order=order)
+meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral")
 ```
 
 
@@ -401,7 +398,7 @@ means_d_c <- subset_vals_per_bins(data = meth_diff,
                              fun = mean,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(means_d_c, main = "mean of means supercons/diff",order=order)
+meth_heatmap(means_d_c, main = "mean of means supercons/diff")
 
 ```
 
@@ -413,7 +410,7 @@ sd_d_c <- subset_vals_per_bins(data = meth_diff,
                              fun = sd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order=order)
+meth_heatmap(sd_d_c, main = "mean of sd supercons/diff")
 ```
 
 
@@ -424,195 +421,181 @@ rsds_d_c <- subset_vals_per_bins(data = meth_diff,
                              fun = rsd,
                              binlist=c("bin1","bin2","bin3","INTER","UTR5","INTRON","CDS","UTR3"),probes_index = feat_ind_cons)
 
-meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order=order)
+meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff")
 ```
 
-# Ordered by mean on intron
+# Ordered by mean on Intron
 
 ## Superup
 
-```{r}
-order <- order(means_h[,"bin3"])
-```
 
 ### Healthy tissues
 
 ```{r}
-meth_heatmap(means_h, main = "mean of means superup/healthy",order=order)
-meth_heatmap(sds_h, main = "mean of sd superup/healthy", order=order)
-meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order=order)
+order_index <- order(means_h[,6])
+meth_heatmap(means_h, main = "mean of means superup/healthy",order_index=order_index)
+meth_heatmap(sds_h, main = "mean of sd superup/healthy", order_index=order_index)
+meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order_index=order_index)
 ```
 
 ### Tumoral tissues
 
 ```{r}
-meth_heatmap(means_t, main = "mean of means superup/tumoral",order=order)
-meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order=order)
-meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order=order)
+meth_heatmap(means_t, main = "mean of means superup/tumoral",order_index=order_index)
+meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order_index=order_index)
+meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order_index=order_index)
 ```
 
 ### Differential
 
 ```{r}
-meth_heatmap(means_d, main = "mean of means superup/differential",order=order)
-meth_heatmap(sds_d, main = "mean of sd superup/differential",order=order)
-meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order=order)
+meth_heatmap(means_d, main = "mean of means superup/differential",order_index=order_index)
+meth_heatmap(sds_d, main = "mean of sd superup/differential",order_index=order_index)
+meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order_index=order_index)
 ```
 
 
 ## Superdown
 
-```{r}
-order <- order(means_h_d[,"bin3"])
-```
+
 
 ### Healthy tissues
 
 ```{r}
-meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order=order)
-meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order=order)
-meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order=order)
+order_index <- order(means_h_d[,6])
+meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order_index=order_index)
+meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order_index=order_index)
+meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order_index=order_index)
 ```
 
 ### Tumoral tissues
 
 ```{r}
-meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order=order)
-meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order=order)
-meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order=order)
+meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order_index=order_index)
+meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order_index=order_index)
 ```
 
 ### Differential
 
 ```{r}
-meth_heatmap(means_d_d, main = "mean of means superdown/diff",order=order)
-meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order=order)
-meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order=order)
+meth_heatmap(means_d_d, main = "mean of means superdown/diff",order_index=order_index)
+meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order_index=order_index)
+meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order_index=order_index)
 ```
 
 
 ## Supercons
 
-```{r}
-order <- order(means_h_c[,"bin3"])
-```
 
 ### Healthy tissues
 
 ```{r}
-meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order=order)
-meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order=order)
-meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order=order)
+order_index <- order(means_h_c[,6])
+meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order_index=order_index)
+meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order_index=order_index)
+meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order_index=order_index)
 ```
 
 ### Tumoral tissues
 
 ```{r}
-meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order=order)
-meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order=order)
-meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order=order)
+meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order_index=order_index)
+meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order_index=order_index)
 ```
 
 ### Differential
 
 ```{r}
-meth_heatmap(means_d_c, main = "mean of means supercons/diff",order=order)
-meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order=order)
-meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order=order)
+meth_heatmap(means_d_c, main = "mean of means supercons/diff",order_index=order_index)
+meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order_index=order_index)
+meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order_index=order_index)
 ```
 
-# Ordered by bin3 (closest one to the TSS)
+# order_indexed by bin3 (closest one to the TSS)
 
 ## Superup
 
-```{r}
-order <- order(means_h[,"INTRON"])
-```
-
 ### Healthy tissues
 
 ```{r}
-meth_heatmap(means_h, main = "mean of means superup/healthy",order=order)
-meth_heatmap(sds_h, main = "mean of sd superup/healthy", order=order)
-meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order=order)
+order_index <- order(means_h[,3])
+meth_heatmap(means_h, main = "mean of means superup/healthy",order_index=order_index)
+meth_heatmap(sds_h, main = "mean of sd superup/healthy", order_index=order_index)
+meth_heatmap(rsds_h, main = "mean of rsd superup/healthy",order_index=order_index)
 ```
 
 ### Tumoral tissues
 
 ```{r}
-meth_heatmap(means_t, main = "mean of means superup/tumoral",order=order)
-meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order=order)
-meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order=order)
+meth_heatmap(means_t, main = "mean of means superup/tumoral",order_index=order_index)
+meth_heatmap(sds_t, main = "mean of sd superup/tumoral",order_index=order_index)
+meth_heatmap(rsds_t, main = "mean of rsd superup/tumoral",order_index=order_index)
 ```
 
 ### Differential
 
 ```{r}
-meth_heatmap(means_d, main = "mean of means superup/differential",order=order)
-meth_heatmap(sds_d, main = "mean of sd superup/differential",order=order)
-meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order=order)
+meth_heatmap(means_d, main = "mean of means superup/differential",order_index=order_index)
+meth_heatmap(sds_d, main = "mean of sd superup/differential",order_index=order_index)
+meth_heatmap(rsds_d, main = "mean of rsd superup/differential",order_index=order_index)
 ```
 
 
 ## Superdown
 
-```{r}
-order <- order(means_h_d[,"INTRON"])
-```
-
 ### Healthy tissues
 
 ```{r}
-meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order=order)
-meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order=order)
-meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order=order)
+order_index <- order(means_h_d[,3])
+meth_heatmap(means_h_d, main = "mean of means superdown/healthy",order_index=order_index)
+meth_heatmap(sd_h_d, main = "mean of sd superdown/healthy",order_index=order_index)
+meth_heatmap(rsds_h_d, main = "mean of rsd superdown/healthy",order_index=order_index)
 ```
 
 ### Tumoral tissues
 
 ```{r}
-meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order=order)
-meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order=order)
-meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order=order)
+meth_heatmap(means_t_d, main = "mean of means superdown/tumoral",order_index=order_index)
+meth_heatmap(sd_t_d, main = "mean of sd superdown/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_d, main = "mean of rsd superdown/tumoral",order_index=order_index)
 ```
 
 ### Differential
 
 ```{r}
-meth_heatmap(means_d_d, main = "mean of means superdown/diff",order=order)
-meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order=order)
-meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order=order)
+meth_heatmap(means_d_d, main = "mean of means superdown/diff",order_index=order_index)
+meth_heatmap(sd_d_d, main = "mean of sd superdown/diff",order_index=order_index)
+meth_heatmap(rsds_d_d, main = "mean of rsd superdown/diff",order_index=order_index)
 ```
 
 
 ## Supercons
 
-```{r}
-order <- order(means_h_c[,"INTRON"])
-```
-
 ### Healthy tissues
 
 ```{r}
-meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order=order)
-meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order=order)
-meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order=order)
+order_index <- order(means_h_c[,3])
+meth_heatmap(means_h_c, main = "mean of means supercons/healthy",order_index=order_index)
+meth_heatmap(sd_h_c, main = "mean of sd supercons/healthy",order_index=order_index)
+meth_heatmap(rsds_h_c, main = "mean of rsd supercons/healthy",order_index=order_index)
 ```
 
 ### Tumoral tissues
 
 ```{r}
-meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order=order)
-meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order=order)
-meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order=order)
+meth_heatmap(means_t_c, main = "mean of means supercons/tumoral",order_index=order_index)
+meth_heatmap(sd_t_c, main = "mean of sd supercons/tumoral",order_index=order_index)
+meth_heatmap(rsds_t_c, main = "mean of rsd supercons/tumoral",order_index=order_index)
 ```
 
 ### Differential
 
 ```{r}
-meth_heatmap(means_d_c, main = "mean of means supercons/diff",order=order)
-meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order=order)
-meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order=order)
+meth_heatmap(means_d_c, main = "mean of means supercons/diff",order_index=order_index)
+meth_heatmap(sd_d_c, main = "mean of sd supercons/diff",order_index=order_index)
+meth_heatmap(rsds_d_c, main = "mean of rsd supercons/diff",order_index=order_index)
 ```
 
 
